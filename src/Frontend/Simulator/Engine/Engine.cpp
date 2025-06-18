@@ -129,14 +129,6 @@ auto Engine::update() -> void {
     this->shader = &shader;
     shader.bind(this);
     this->shader->set("m_projection", projection);
-#ifdef __DEBUG
-    // --- DEBUGGING OUTPUT ---
-    std::cout << "--- Update ---" << std::endl;
-    std::cout << "ShaderID: " << shader.getID() << std::endl;
-    std::cout << "Perpective Matrix:\n"
-              << glm::to_string(this->projection) << std::endl;
-    std::cout << "--------------------------" << std::endl;
-#endif
     for (const auto &[mesh, objs] : meshes) {
       mesh.bind(this);
       for (const auto &obj : objs) {
@@ -213,13 +205,13 @@ void Engine::handleFramebufferSize(int width, int height) {
   glViewport(0, 0, width, height);
 
   projection = glm::ortho<float>(0.0f, static_cast<float>(width), 0.0f,
-                                 static_cast<float>(height), 0.0f, 100.0f);
-
+                                 static_cast<float>(height), Z_NEAR, -Z_FAR);
+  glm::vec<2, int> win(width, height);
   for (const auto &[shader, meshes] : objects) {
     for (const auto &[mesh, objs] : meshes) {
       for (const auto &obj : objs) {
         if (obj->onResize)
-          obj->onResize(*obj, glm::vec<2, int>(width, height));
+          obj->onResize(*obj, win);
       }
     }
   }

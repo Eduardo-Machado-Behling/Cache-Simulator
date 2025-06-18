@@ -4,23 +4,36 @@
 
 Simulator::Simulator() : engine(1440, 960) {
   Object *sidebar =
-      engine.object(&assets.get_shader("debug"), &assets.get_mesh("square"));
+      engine.object(&assets.get_shader("2d"), &assets.get_mesh("square"));
   sidebar
-      // FIX: Give it a Z-value *inside* the [0, 100] range.
-      // Let's make it the front-most object.
       ->add_component(new Transform(glm::vec3(1040, 0, 50.f),
                                     glm::vec3(400, 960, 1), glm::vec3(0)))
       .add_component(new Color(0x181818ff));
-  // ... onResize lambda ...
+  sidebar->onResize = [](Object &self, glm::vec<2, int> &window) {
+    Transform *t = self.get_component<Transform>("Transform");
+    auto pos = t->get_position();
+    auto scale = t->get_scale();
+
+    pos.x = window.x - scale.x;
+    scale.y = window.y;
+
+    t->position(pos);
+    t->scale(scale);
+  };
 
   Object *bottom =
-      engine.object(&assets.get_shader("debug"), &assets.get_mesh("square"));
+      engine.object(&assets.get_shader("2d"), &assets.get_mesh("square"));
   bottom
-      // FIX: Push this object further back so the sidebar appears in front.
       ->add_component(new Transform(glm::vec3(0, 0, 99.f),
                                     glm::vec3(1040, 250, 1), glm::vec3(0)))
       .add_component(new Color(0x44475Aff));
-  // ... onResize lambda ...
+
+  bottom->onResize = [](Object &self, glm::vec<2, int> &window) {
+    Transform *t = self.get_component<Transform>("Transform");
+    auto scale = t->get_scale();
+    scale.x = window.x;
+    t->scale(scale);
+  };
 }
 
 auto Simulator::tick(Backend *backend, std::queue<addr_t> &addrs) -> void {

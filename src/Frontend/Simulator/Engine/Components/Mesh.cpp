@@ -81,8 +81,6 @@ auto Mesh::bind(Engine *engine) const -> void {
 }
 
 auto Mesh::draw() const -> void {
-  dump_opengl_state_at_draw_call(__shader_Id, this->indices.size(),
-                                 GL_UNSIGNED_SHORT);
   glDrawElements(GL_TRIANGLES, this->indices.size(), GL_UNSIGNED_SHORT, 0);
 }
 

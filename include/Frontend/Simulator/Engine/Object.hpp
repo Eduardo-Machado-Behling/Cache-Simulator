@@ -30,7 +30,7 @@ struct Object {
   auto get_components()
       -> std::unordered_map<std::string_view, std::unique_ptr<Component>> &;
 
-  std::function<void(Object &, glm::vec<2, int>)> onResize;
+  std::function<void(Object &, glm::vec<2, int> &)> onResize;
 
 private:
   Shader *shader;
