@@ -13,6 +13,13 @@
 #include <vector>
 
 struct Engine {
+	struct ID {
+		Shader* shader;
+		Mesh* mesh;
+
+		size_t i;
+	};
+
   Engine(int screen_width, int screen_height);
   ~Engine();
 
@@ -28,7 +35,8 @@ struct Engine {
   auto update() -> void;
   auto halted() -> bool;
 
-  auto object(Shader *shader, Mesh *mesh) -> Object *;
+  auto object(Shader *shader, Mesh *mesh) -> Engine::ID;
+  auto get(Engine::ID id) -> Object&;
 
 private:
   Shader const *shader;

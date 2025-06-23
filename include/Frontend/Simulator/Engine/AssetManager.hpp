@@ -4,9 +4,9 @@
 #include "Frontend/Simulator/Engine/Components/Mesh.hpp"
 #include "Frontend/Simulator/Engine/Components/Shader.hpp"
 #include "Frontend/Simulator/Engine/Components/Texture.hpp"
+#include "Frontend/Simulator/Engine/Font.hpp"
 
 #include <filesystem>
-#include <memory>
 #include <string_view>
 #include <unordered_map>
 
@@ -38,10 +38,12 @@ public:
   auto get_texture(std::string_view name) -> Texture &;
   auto get_shader(std::string_view name) -> Shader &;
   auto get_mesh(std::string_view name) -> Mesh &;
+  auto get_font(std::string_view name) -> Font &;
 
   std::unordered_map<std::string_view, Texture> textures;
   std::unordered_map<std::string_view, Shader> shaders;
   std::unordered_map<std::string_view, Mesh> meshes;
+  std::unordered_map<std::string_view, Font> fonts;
 };
 
 #endif // ASSETMANAGER_HPP

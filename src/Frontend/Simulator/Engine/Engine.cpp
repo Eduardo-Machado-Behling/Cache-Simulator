@@ -1,5 +1,7 @@
 #include "Frontend/Simulator/Engine/Engine.hpp"
+#include "Frontend/Simulator/Engine/Components/Shader.hpp"
 
+#include <cstddef>
 #include <glad/glad.h>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -14,6 +16,7 @@
 
 static auto checkGLErrors(const std::string &operation, GLuint shaderID,
                           std::string_view uniformName) -> bool;
+
 
 Engine::Engine(int screen_width, int screen_height)
     : projection(glm::ortho<float>(0.0f, screen_width, 0.0f, screen_height,
@@ -152,10 +155,16 @@ auto Engine::update() -> void {
   glfwPollEvents();
 }
 
-auto Engine::object(Shader *shader, Mesh *mesh) -> Object * {
+auto Engine::object(Shader *shader, Mesh *mesh) -> Engine::ID {
   std::vector<std::unique_ptr<Object>> &vec = objects[*shader][*mesh];
+  size_t i = vec.size();
   vec.push_back(std::make_unique<Object>(shader, mesh));
-  return vec.back().get();
+  return Engine::ID{.shader=shader, .mesh=mesh, .i=i};
+}
+
+auto Engine::get(Engine::ID id) -> Object& {
+  std::vector<std::unique_ptr<Object>> &vec = objects[*id.shader][*id.mesh];
+	return *vec[id.i];
 }
 
 // --- Static Dispatcher Implementations ---

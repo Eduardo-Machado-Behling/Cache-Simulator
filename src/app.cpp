@@ -1,7 +1,7 @@
 #include "app.hpp"
 
-#include "BackEnd/Temp.hpp"
-#include "FrontEnd/Simulator/Simulator.hpp"
+#include "Backend/Temp.hpp"
+#include "Frontend/Simulator/Simulator.hpp"
 #include "common/TQueue.hpp"
 
 #include <filesystem>

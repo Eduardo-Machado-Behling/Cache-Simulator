@@ -36,6 +36,8 @@ auto AssetManager::get_shader(std::string_view name) -> Shader & {
 
   return shaders.at(name);
 }
+
+
 auto AssetManager::get_mesh(std::string_view name) -> Mesh & {
   auto it = meshes.find(name);
   if (it != meshes.end()) {
@@ -67,4 +69,12 @@ auto AssetManager::get_mesh(std::string_view name) -> Mesh & {
   meshes.emplace(name, verts);
 
   return meshes.at(name);
+}
+
+auto AssetManager::get_font(std::string_view name) -> Font &{
+  std::filesystem::path root = ROOT / "fonts";
+  std::filesystem::path font = root / (std::string(name) + ".ttf");
+
+  fonts.emplace(name, font);
+  return fonts.at(name);
 }

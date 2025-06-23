@@ -1,14 +1,15 @@
 #ifndef HELLOWORLD_HPP
 #define HELLOWORLD_HPP
 
-#include "FrontEnd/Frontend.hpp"
+#include "Frontend/Frontend.hpp"
 #include "Frontend/Simulator/Engine/AssetManager.hpp"
 #include "Frontend/Simulator/Engine/Engine.hpp"
+#include "Frontend/Simulator/Engine/AnimationManager.hpp"
 
 #include <glad/glad.h>
+#include <chrono>
 
 #include <GLFW/glfw3.h>
-#include <memory>
 
 class Simulator : public Frontend {
 public:
@@ -20,6 +21,10 @@ private:
   GLFWwindow *window;
   Engine engine;
   AssetManager assets;
+  AnimationManager animator;
+
+  using floating_seconds = std::chrono::duration<float>;
+  std::chrono::time_point<std::chrono::steady_clock> start;
 };
 
 #endif // HELLOWORLD_HPP
