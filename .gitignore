@@ -34,3 +34,8 @@
 # Cmake
 build
 bin
+
+# Editor
+.nvim
+.vscode
+.cache
