@@ -37,7 +37,6 @@ auto AssetManager::get_shader(std::string_view name) -> Shader & {
   return shaders.at(name);
 }
 
-
 auto AssetManager::get_mesh(std::string_view name) -> Mesh & {
   auto it = meshes.find(name);
   if (it != meshes.end()) {
@@ -59,22 +58,37 @@ auto AssetManager::get_mesh(std::string_view name) -> Mesh & {
         continue;
       else if (*f == '+')
         ++f;
-      verts.push_back(atof(f));
+      verts.push_back(static_cast<float>(atof(f)));
 
       f = strtok(NULL, ",\n");
     }
   }
   mesh_file.close();
 
-  meshes.emplace(name, verts);
+  meshes.insert({name, {verts}});
 
   return meshes.at(name);
 }
 
-auto AssetManager::get_font(std::string_view name) -> Font &{
+auto AssetManager::get_font(std::string_view name) -> Font & {
   std::filesystem::path root = ROOT / "fonts";
   std::filesystem::path font = root / (std::string(name) + ".ttf");
 
   fonts.emplace(name, font);
   return fonts.at(name);
+}
+
+auto AssetManager::register_texture(std::string_view name, Texture &texture)
+    -> void {
+  textures.insert({name, std::move(texture)});
+}
+auto AssetManager::register_shader(std::string_view name, Shader &shader)
+    -> void {
+  shaders.insert({name, std::move(shader)});
+}
+auto AssetManager::register_mesh(std::string_view name, Mesh &mesh) -> void {
+  meshes.insert({name, std::move(mesh)});
+}
+auto AssetManager::register_font(std::string_view name, Font &font) -> void {
+  fonts.insert({name, std::move(font)});
 }

@@ -54,7 +54,7 @@ Simulator::Simulator() : engine(1440, 960) {
   }
 
   );
-  assets.get_font("JetBrainsMono-Bold");
+  Font& font = assets.get_font("JetBrainsMono-Bold");
 
   Engine::ID bt_id = 
       engine.object(&assets.get_shader("2d"), &assets.get_mesh("square"));
@@ -71,6 +71,28 @@ Simulator::Simulator() : engine(1440, 960) {
     scale.x = window.x;
     t->scale(scale);
   };
+
+  std::vector<std::vector<float>> countour_data;
+  for (auto& c : font['B'].contours) {
+	  countour_data.emplace_back();
+	  auto& da = countour_data.back();
+	  for (auto& f: c){
+		da.push_back(f.x);
+		da.push_back(f.y);
+		da.push_back(0);
+	  }
+  }
+
+  Mesh mesh(countour_data);
+  assets.register_mesh("font", mesh);
+  Engine::ID font_id = 
+      engine.object(&assets.get_shader("2d"), &assets.get_mesh("font"));
+  Object& fobj =
+	  engine.get(font_id);
+  fobj
+      .add_component(new Transform(glm::vec3(500, 500, 99.f),
+                                    glm::vec3(24, 24, 1), glm::vec3(0)))
+      .add_component(new Color(0x44475Aff));
 }
 
 auto Simulator::tick(Backend *backend, std::queue<addr_t> &addrs) -> void {

@@ -6,6 +6,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <memory>
 
 static auto getBackend(std::span<std::string> args) -> std::unique_ptr<Backend>;
 static auto getFrontend(std::string &id) -> std::unique_ptr<Frontend>;

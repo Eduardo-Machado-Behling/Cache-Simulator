@@ -40,6 +40,11 @@ public:
   auto get_mesh(std::string_view name) -> Mesh &;
   auto get_font(std::string_view name) -> Font &;
 
+  auto register_texture(std::string_view name, Texture & texture) -> void;
+  auto register_shader(std::string_view name, Shader & shader) -> void;
+  auto register_mesh(std::string_view name, Mesh & mesh) -> void;
+  auto register_font(std::string_view name, Font & font) -> void;
+
   std::unordered_map<std::string_view, Texture> textures;
   std::unordered_map<std::string_view, Shader> shaders;
   std::unordered_map<std::string_view, Mesh> meshes;
