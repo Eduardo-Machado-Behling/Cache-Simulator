@@ -9,7 +9,7 @@ private:
 public:
     HeadLess();
     ~HeadLess();
-    auto tick(Backend *backend, addr_t addr) -> void;
+    auto tick(Backend *backend, std::queue<addr_t> &addrs) -> void;
     auto halted() -> bool;
 };
 

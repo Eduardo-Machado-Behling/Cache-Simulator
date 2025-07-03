@@ -37,7 +37,7 @@ App::App(std::unique_ptr<Backend> &&backend,
 
 auto App::run() -> void {
   while (!frontend->halted() && !addrs.empty() ) {
-    frontend->tick(backend.get(), addrs.front());
+    frontend->tick(backend.get(), addrs);
     addrs.pop();
   }
   CacheReport results = backend.get()->report();

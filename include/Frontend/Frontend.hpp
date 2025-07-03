@@ -13,7 +13,7 @@
 struct Frontend {
   virtual ~Frontend() = default;
 
-  virtual auto tick(Backend *backend, addr_t addr) -> void = 0;
+  virtual auto tick(Backend *backend, std::queue<addr_t> &addrs) -> void = 0;
   virtual auto halted() -> bool = 0;
 };
 
