@@ -29,7 +29,10 @@ Cache::~Cache() {
 
 auto Cache::process([[maybe_unused]] addr_t addr) -> CacheAccess & {
   __report.accesses++;
-  discrete_t index = ( addr >> ( __specs.bits.offset ) ) & ( ( 2 ^ __specs.bits.index ) - 1);
+  discrete_t index = 0;  
+  if( __specs.nsets > 1 ) {
+    index = ( addr >> ( __specs.bits.offset ) ) & ( ( 1 << __specs.bits.index ) - ( discrete_t ) 1);
+  } 
   discrete_t tag = ( discrete_t ) addr >> ( __specs.bits.index + __specs.bits.offset );
   std::tuple search = IsInTheCache( index , tag );
   if( std::get<0>( search ) ) {
@@ -44,7 +47,7 @@ auto Cache::process([[maybe_unused]] addr_t addr) -> CacheAccess & {
     if( !cache[index][__access.block].val ) {
       __access.res = AccessResult::COMPULSORY_MISS;
       __report.compulsory_miss++;
-    } 
+    }
     if( cache[index][__access.block].val && isFull ) {
       __access.res = AccessResult::CAPACITY_MISS;
       __report.capacity_miss++;
@@ -57,6 +60,7 @@ auto Cache::process([[maybe_unused]] addr_t addr) -> CacheAccess & {
     cache[index][__access.block].tag = tag;
   }
   __access.orig = addr;
+  std::cout << __report.accesses << " " << __access.orig << " " << __access.block << " " << index << " " << "\n";
   return this->__access;
 }
 
@@ -78,7 +82,6 @@ bool Cache::IsFull(){
   if ( isFull ){
     return true;
   }
-  
   for ( discrete_t index = 0; index < __specs.nsets ; index++ ) {
     for ( discrete_t block = 0 ; block < __specs.assoc ; block++ ) {
       if( !cache.at( index ).at( block ).val ) {
