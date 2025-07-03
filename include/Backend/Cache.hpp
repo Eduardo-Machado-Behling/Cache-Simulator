@@ -23,7 +23,6 @@ public:
   auto report() -> CacheReport & override;
 
 private:
-  bool isFull = false;
   struct CacheBlock
   {
     bool val = false;
@@ -32,7 +31,7 @@ private:
   std::vector< std::vector< CacheBlock > > cache;
   std::unique_ptr< SubstitutionPolitics >  substitutionPolitics;
   auto setCacheSpecs( std::span< std::string > command) -> CacheSpecs;
-  bool IsFull();
+  bool IsFull( discrete_t index );
   std::tuple< bool , discrete_t > IsInTheCache( discrete_t index , discrete_t tag );
 };
 
