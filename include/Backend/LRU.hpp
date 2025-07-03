@@ -4,13 +4,12 @@
 #include "Backend/SubstitutionPolitics.hpp"
 
 #include <vector>
-#include <queue>
+#include <list>
 
 class LRU : public SubstitutionPolitics
 {
-private:
-    std::vector< std::queue< discrete_t > > priority;
-    std::queue< discrete_t > bucket; 
+protected:
+    std::vector< std::list< discrete_t > > priority;
 public:
     LRU( discrete_t associativity , discrete_t nstes ); 
     ~LRU();

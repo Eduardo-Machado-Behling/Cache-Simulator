@@ -16,11 +16,11 @@ struct CacheReport {
               percentage_t capacity_miss_rate, percentage_t conflict_miss_rate);
 
   void Calculate() {
-    miss_rate = ( float ) miss / ( float ) accesses;
-    hit_rate = ( float ) hits / ( float ) accesses;
-    compulsory_miss_rate = ( float ) compulsory_miss / ( float ) accesses;
-    conflict_miss_rate = ( float ) conflict_miss / ( float ) accesses;
-    capacity_miss_rate = ( float ) capacity_miss / ( float ) accesses;
+    miss_rate = ( percentage_t ) miss / ( percentage_t ) accesses;
+    hit_rate = ( percentage_t ) hits / ( percentage_t ) accesses;
+    compulsory_miss_rate = ( percentage_t ) compulsory_miss / ( percentage_t ) miss;
+    conflict_miss_rate = ( percentage_t ) conflict_miss / ( percentage_t ) miss;
+    capacity_miss_rate = ( percentage_t ) capacity_miss / ( percentage_t ) miss;
   }
 
   discrete_t accesses = 0;
