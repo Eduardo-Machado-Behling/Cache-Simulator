@@ -17,7 +17,6 @@ struct Backend {
 
   virtual auto process(addr_t addr) -> CacheAccess & = 0;
   virtual auto report() -> CacheReport & = 0;
-  virtual auto halted() -> bool = 0;
 
 protected:
   CacheAccess __access;

@@ -1,22 +1,7 @@
-#include "Backend/SubstitutionPolitics.hpp"
+#include "Backend/LRU.hpp"
 
-#include <vector>
-#include <queue>
-
-class LRU : public SubstitutionPolitics
-{
-private:
-    std::vector< std::queue< int > > priority;
-    std::queue< int > bucket; 
-public:
-    LRU( int associativity , int nstes ); 
-    ~LRU();
-    int GetBlock( int index ) override;
-    void Refresh(int index, int block) override;
-};
-
-LRU::LRU( int associativity , int nstes ) : SubstitutionPolitics( associativity , nstes ) {
-    priority = std::vector< std::queue< int > >( nstes );
+LRU::LRU( discrete_t associativity , discrete_t nstes ) : SubstitutionPolitics( associativity ) {
+    priority = std::vector< std::queue< discrete_t > >( nstes );
     for ( size_t index = 0 ; index < nstes ; index++ ) {
         for ( size_t block = 0 ; block < associativity ; block++ ) {
             priority[index].push( block );
@@ -29,13 +14,13 @@ LRU::~LRU() {
     bucket = {};
 }
 
-int LRU::GetBlock( int index ) {
-    int temp = priority[index].front();
+discrete_t LRU::GetBlock( discrete_t index ) {
+    discrete_t temp = priority[index].front();
     priority[index].pop();
     priority[index].push( temp );
     return temp;
 }
-void LRU::Refresh(int index, int block) {
+void LRU::Refresh(discrete_t index, discrete_t block) {
     while ( priority[index].empty() ) {
         if( priority[index].front() != block ) {
             bucket.push( priority[index].front() );

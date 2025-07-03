@@ -1,21 +1,7 @@
-#include "Backend/SubstitutionPolitics.hpp"
+#include "Backend/FIFO.hpp"
 
-#include <vector>
-#include <queue>
-
-class FIFO : public SubstitutionPolitics
-{
-private:
-    std::vector< std::queue< int > > priority ;
-public:
-    FIFO( int associativity , int nstes ); 
-    ~FIFO();
-    int GetBlock( int index ) override;
-    void Refresh(int index, int block) override;
-};
-
-FIFO::FIFO( int associativity , int nstes ) : SubstitutionPolitics( associativity , nstes ) {
-    priority = std::vector< std::queue< int > >( nstes );
+FIFO::FIFO( discrete_t associativity , discrete_t nstes ) : SubstitutionPolitics( associativity ) {
+    priority = std::vector< std::queue< discrete_t > >( nstes );
     for ( size_t index = 0 ; index < nstes ; index++ ) {
         for( size_t block = 0 ; block < associativity ; block++ ) {
             priority[index].push( block );
@@ -27,13 +13,13 @@ FIFO::~FIFO() {
     priority.clear();
 }
 
-int FIFO::GetBlock( int index ) {
-    int temp = priority[index].front();
+discrete_t FIFO::GetBlock( discrete_t index ) {
+    discrete_t temp = priority[index].front();
     priority[index].pop();
     priority[index].push( temp );
     return temp;
 }
-void FIFO::Refresh(int index, int block) {
+void FIFO::Refresh( [[maybe_unused]]  discrete_t index, [[maybe_unused]]discrete_t block) {
     return;
 }
 

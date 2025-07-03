@@ -14,7 +14,7 @@
 class Simulator : public Frontend {
 public:
   Simulator();
-  auto tick(Backend *backend, std::queue<addr_t> &addrs) -> void override;
+  auto tick(Backend *backend, addr_t addr) -> void override;
   auto halted() -> bool override;
 
 private:

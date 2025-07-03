@@ -1,28 +1,17 @@
-#include "Backend/SubstitutionPolitics.hpp"
+#include "Backend/RANDOM.hpp"
 
-#include <stdlib.h> 
-#include <time.h>
-
-class RANDOM : public SubstitutionPolitics
-{
-public:
-    RANDOM( int associativity , int nstes ); 
-    ~RANDOM();
-    int GetBlock( int index ) override;
-    void Refresh(int index, int block) override;
-};
-
-RANDOM::RANDOM( int associativity , int nstes ) : SubstitutionPolitics( associativity , nstes ) {
-    srand (time(NULL));
+RANDOM::RANDOM( discrete_t associativity , [[maybe_unused]] discrete_t nstes ) : SubstitutionPolitics( associativity) {
+    srand ( ( unsigned int ) time(NULL));
 }
 
 RANDOM::~RANDOM() {       
 }
 
-int RANDOM::GetBlock( int index ) {
-   return rand() % this->associativity;
+discrete_t RANDOM::GetBlock( [[maybe_unused]] discrete_t index ) {
+   return ( discrete_t ) rand() % this->associativity;
 } 
-void RANDOM::Refresh(int index, int block) {
+
+void RANDOM::Refresh( [[maybe_unused]] discrete_t index, [[maybe_unused]] discrete_t block) {
     return;
 }
 

@@ -29,16 +29,18 @@ App::App(std::unique_ptr<Backend> &&backend,
 
   std::ifstream in{l.string(), std::ios::binary};
 
-  while (!in.eof()) {
-    in.read((char *)&addr, sizeof(addr));
+  while ( in.read((char *)&addr, sizeof(addr)) ) {
     flipWord(&addr);
     addrs.push(addr);
   }
 }
 
 auto App::run() -> void {
-  while (!frontend->halted()) {
-    frontend->tick(backend.get(), addrs);
+  int count = 0;
+
+  while (!frontend->halted() && !addrs.empty() ) {
+    frontend->tick(backend.get(), addrs.front());
+    addrs.pop();
   }
   CacheReport results = backend.get()->report();
   std::cout << results.accesses << " " << results.hit_rate << "  " << results.miss_rate << " " << results.compulsory_miss_rate << " " << results.capacity_miss_rate << " " << results.conflict_miss_rate << "\n";
@@ -58,7 +60,6 @@ static auto getBackend(std::span<std::string> args)
 
 static auto getFrontend(std::string &id) -> std::unique_ptr<Frontend> {
   int i = std::stoi(id);
-
   switch (i) {
   case 0:
     return std::make_unique<Simulator>();
@@ -68,6 +69,7 @@ static auto getFrontend(std::string &id) -> std::unique_ptr<Frontend> {
   break;
   default:
     std::cout << "Chose a frontend\n\tHALTING PROGRAM\n";
+    exit(0);
     break;
   }
 }

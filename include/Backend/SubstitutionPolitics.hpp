@@ -1,22 +1,19 @@
-#ifndef SUBSTITUtION_POLITICS_HPP
-#define SUBSTITUtION_POLITICS_HPP
+#ifndef SUBSTITUTION_POLITICS_HPP
+#define SUBSTITUTION_POLITICS_HPP
 
 #include "common/CacheSpecs.hpp"
 
 class SubstitutionPolitics
 {
 protected:
-    int associativity , nstes;
-    SubstitutionPolitics( int associativity , int nsets );
-public:
+    discrete_t associativity;
+    public:
+    SubstitutionPolitics( discrete_t associativity ){
+        this->associativity = associativity;
+    }
     virtual ~SubstitutionPolitics() = default;
-    virtual int GetBlock( int index ) = 0;
-    virtual void Refresh( int index , int block ) = 0;
+    virtual discrete_t GetBlock( discrete_t index ) = 0;
+    virtual void Refresh( discrete_t index , discrete_t block ) = 0;
 };
-
-SubstitutionPolitics::SubstitutionPolitics( int associativity , int nsets ) {
-    this->associativity = associativity;
-    this->nstes = nstes;
-}
 
 #endif

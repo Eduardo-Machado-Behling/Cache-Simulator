@@ -73,13 +73,12 @@ Simulator::Simulator() : engine(1440, 960) {
   };
 }
 
-auto Simulator::tick(Backend *backend, std::queue<addr_t> &addrs) -> void {
+auto Simulator::tick(Backend *backend, addr_t addr) -> void {
   static auto start = std::chrono::steady_clock::now();
   auto now = std::chrono::steady_clock::now();
   auto elapsed = now - start;
 
   float elapsed_s = std::chrono::duration_cast<floating_seconds>(elapsed).count();
-  addr_t addr = addrs.front();
 
   auto access = backend->process(addr);
   animator(elapsed_s);

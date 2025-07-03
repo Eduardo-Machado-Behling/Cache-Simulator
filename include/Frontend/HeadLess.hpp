@@ -5,11 +5,11 @@
 class HeadLess : public Frontend
 {
 private:
-    bool running = true;
+    bool running = false;
 public:
     HeadLess();
     ~HeadLess();
-    auto tick(Backend *backend, std::queue<addr_t> &addrs) -> void;
+    auto tick(Backend *backend, addr_t addr) -> void;
     auto halted() -> bool;
 };
 
