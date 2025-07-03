@@ -36,14 +36,12 @@ App::App(std::unique_ptr<Backend> &&backend,
 }
 
 auto App::run() -> void {
-  int count = 0;
-
   while (!frontend->halted() && !addrs.empty() ) {
     frontend->tick(backend.get(), addrs.front());
     addrs.pop();
   }
   CacheReport results = backend.get()->report();
-  std::cout << results.accesses << " " << results.hit_rate << "  " << results.miss_rate << " " << results.compulsory_miss_rate << " " << results.capacity_miss_rate << " " << results.conflict_miss_rate << "\n";
+  std::cout << results.accesses << " " << results.hit_rate << " " << results.miss_rate << " " << results.compulsory_miss_rate << " " << results.capacity_miss_rate << " " << results.conflict_miss_rate << "\n";
 }
 
 auto App::generateApp(std::vector<std::string> &command) -> App {
