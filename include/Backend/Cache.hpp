@@ -31,7 +31,8 @@ private:
   std::vector< std::vector< CacheBlock > > cache;
   std::unique_ptr< SubstitutionPolitics >  substitutionPolitics;
   auto setCacheSpecs( std::span< std::string > command) -> CacheSpecs;
-  bool IsFull( discrete_t index );
+  bool IsFullBlock( discrete_t index );
+  bool IsFull();
   std::tuple< bool , discrete_t > IsInTheCache( discrete_t index , discrete_t tag );
 };
 

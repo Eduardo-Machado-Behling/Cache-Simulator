@@ -29,7 +29,7 @@ Cache::~Cache() {
 
 auto Cache::process([[maybe_unused]] addr_t addr) -> CacheAccess & {
   __report.accesses++;
-  bool isFull;
+  bool isFullBlock , isFull;
   discrete_t index = 0;  
   if( __specs.nsets > 1 ) {
     index = ( addr >> ( __specs.bits.offset ) ) & ( ( 1 << __specs.bits.index ) - ( discrete_t ) 1);
@@ -43,20 +43,21 @@ auto Cache::process([[maybe_unused]] addr_t addr) -> CacheAccess & {
     __report.hits++;
   } else {
     __report.miss++;
-    isFull = IsFull( index );
+    isFullBlock = IsFullBlock( index );
+    isFull = IsFull();
     __access.block = substitutionPolitics.get()->GetBlock( index );
+
     if( !cache[index][__access.block].val ) {
       __access.res = AccessResult::COMPULSORY_MISS;
       __report.compulsory_miss++;
-    }
-    if( cache[index][__access.block].val && isFull ) {
+    } else if( cache[index][__access.block].val && isFull ) {
       __access.res = AccessResult::CAPACITY_MISS;
       __report.capacity_miss++;
-    }
-    if( cache[index][__access.block].val && !isFull ) {
+    } else {
       __access.res = AccessResult::CONFLICT_MISS;
       __report.conflict_miss++;
     }
+
     cache[index][__access.block].val = true;
     cache[index][__access.block].tag = tag;
   }
@@ -79,10 +80,21 @@ std::tuple< bool , discrete_t > Cache::IsInTheCache( discrete_t index , discrete
   return std::make_tuple( false , 0 );
 }
  
-bool Cache::IsFull( discrete_t index ){
+bool Cache::IsFullBlock( discrete_t index ){
   for ( discrete_t block = 0 ; block < __specs.assoc ; block++ ) {
     if( !cache.at( index ).at( block ).val ) {
       return false;
+    }
+  }
+  return true;
+}
+
+bool Cache::IsFull(){
+  for( discrete_t index = 0 ; index < __specs.nsets ; index++ ) {
+    for ( discrete_t block = 0 ; block < __specs.assoc ; block++ ) {
+      if( !cache.at( index ).at( block ).val ) {
+        return false;
+      }
     }
   }
   return true;
