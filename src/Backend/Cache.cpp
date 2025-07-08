@@ -46,18 +46,24 @@ auto Cache::process([[maybe_unused]] addr_t addr) -> CacheAccess & {
     isFullBlock = IsFullBlock( index );
     isFull = IsFull();
     __access.block = substitutionPolitics.get()->GetBlock( index );
-
-    if( !cache[index][__access.block].val ) {
+    if( !isFullBlock ) {
+      for ( discrete_t i = 0; i < __specs.assoc ; i++ ) {
+        if( !cache[index][i].val ) {
+          __access.block = i;
+          break;
+        }
+      }
       __access.res = AccessResult::COMPULSORY_MISS;
       __report.compulsory_miss++;
-    } else if( cache[index][__access.block].val && isFull ) {
-      __access.res = AccessResult::CAPACITY_MISS;
-      __report.capacity_miss++;
     } else {
-      __access.res = AccessResult::CONFLICT_MISS;
-      __report.conflict_miss++;
+      if( cache[index][__access.block].val && isFull ) {
+        __access.res = AccessResult::CAPACITY_MISS;
+        __report.capacity_miss++;
+      } else {
+        __access.res = AccessResult::CONFLICT_MISS;
+        __report.conflict_miss++;
+      }
     }
-
     cache[index][__access.block].val = true;
     cache[index][__access.block].tag = tag;
   }

@@ -10,8 +10,8 @@ RANDOM::~RANDOM() {
 
 discrete_t RANDOM::GetBlock( [[maybe_unused]] discrete_t index ) {
     static std::mt19937 gen(std::random_device{}());
-    std::uniform_int_distribution<> dist( 0 , this->associativity - 1 );
-    return dist(gen);
+    std::uniform_int_distribution<> dist( 0 , ( int ) ( this->associativity - 1 ) );
+    return ( discrete_t ) dist(gen);
 
 } 
 
