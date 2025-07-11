@@ -4,6 +4,7 @@
 #include "glm/fwd.hpp"
 
 #include <chrono>
+#include <iostream>
 
 Simulator::Simulator() : engine(1440, 960) {
   Engine::ID sd_id = 
@@ -19,8 +20,8 @@ Simulator::Simulator() : engine(1440, 960) {
     auto pos = t->get_position();
     auto scale = t->get_scale();
 
-    pos.x = window.x - scale.x;
-    scale.y = window.y;
+    pos.x = (float)window.x - scale.x;
+    scale.y = (float)window.y;
 
     t->position(pos);
     t->scale(scale);
@@ -43,6 +44,7 @@ Simulator::Simulator() : engine(1440, 960) {
   }, 0.5f),
 
   AnimationManager::Animation([&, sd_id](float progress){
+	std::cout << progress << '\n';
 	Object& sidebar = engine.get(sd_id);
     Transform *t = sidebar.get_component<Transform>("Transform");
 
@@ -72,27 +74,29 @@ Simulator::Simulator() : engine(1440, 960) {
     t->scale(scale);
   };
 
-  std::vector<std::vector<float>> countour_data;
-  for (auto& c : font['B'].contours) {
-	  countour_data.emplace_back();
-	  auto& da = countour_data.back();
-	  for (auto& f: c){
-		da.push_back(f.x);
-		da.push_back(f.y);
-		da.push_back(0);
-	  }
-  }
+  // std::vector<std::vector<float>> countour_data;
+  // for (auto& c : font['B'].contours) {
+  //  countour_data.emplace_back();
+  //  auto& da = countour_data.back();
+  //  std::cout << "Countour:\n";
+  //  for (auto& f: c){
+  // da.push_back(f.x);
+  // da.push_back(f.y);
+  // da.push_back(0);
+  // std::cout << "\t(" << f.x << ", " << f.y << ")\n";
+  //  }
+  // }
 
-  Mesh mesh(countour_data);
-  assets.register_mesh("font", mesh);
-  Engine::ID font_id = 
-      engine.object(&assets.get_shader("2d"), &assets.get_mesh("font"));
-  Object& fobj =
-	  engine.get(font_id);
-  fobj
-      .add_component(new Transform(glm::vec3(500, 500, 99.f),
-                                    glm::vec3(24, 24, 1), glm::vec3(0)))
-      .add_component(new Color(0x44475Aff));
+  // Mesh mesh(countour_data);
+  // assets.register_mesh("font", mesh);
+  // Engine::ID font_id = 
+  //     engine.object(&assets.get_shader("2d"), &assets.get_mesh("font"));
+  // Object& fobj =
+  //  engine.get(font_id);
+  // fobj
+  //     .add_component(new Transform(glm::vec3(500, 500, 99.f),
+  //                                   glm::vec3(24, 24, 1), glm::vec3(0)))
+  //     .add_component(new Color(0x44475Aff));
 }
 
 auto Simulator::tick(Backend *backend, std::queue<addr_t> &addrs) -> void {

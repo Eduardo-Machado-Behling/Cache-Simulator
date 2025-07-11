@@ -41,8 +41,14 @@ struct Engine {
 private:
   Shader const *shader;
   std::unordered_map<
-      Shader, std::unordered_map<Mesh, std::vector<std::unique_ptr<Object>>>>
-      objects;
+      Shader, 
+	  std::unordered_map<
+		  Mesh*, 
+		  std::vector<std::unique_ptr<Object>>,
+		  Mesh::PointerHasher,
+		  Mesh::PointerEqual
+	  >
+  > objects;
   glm::mat4 projection;
   GLFWwindow *window;
 

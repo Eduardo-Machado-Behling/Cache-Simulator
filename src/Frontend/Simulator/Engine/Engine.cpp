@@ -17,7 +17,6 @@
 static auto checkGLErrors(const std::string &operation, GLuint shaderID,
                           std::string_view uniformName) -> bool;
 
-
 Engine::Engine(int screen_width, int screen_height)
     : projection(glm::ortho<float>(0.0f, screen_width, 0.0f, screen_height,
                                    Z_NEAR, -Z_FAR)) {
@@ -72,9 +71,25 @@ auto Engine::rmv_object(Object *obj) -> void {
   if (it == objects.end())
     return;
 
-  auto itt = it->second.find(*mesh);
+  auto itt = it->second.find(mesh);
   if (itt == it->second.end())
-    return;
+    return;// Hasher for Mesh*
+struct MeshPointerHasher {
+    auto operator()(const Mesh* mesh) const -> std::size_t {
+        // Dereference the pointer and use the existing std::hash<Mesh> specialization
+        return std::hash<Mesh>{}(*mesh);
+    }
+};
+
+// Equality comparator for Mesh*
+struct MeshPointerEqual {
+    auto operator()(const Mesh* a, const Mesh* b) const -> bool {
+        // Dereference the pointers and use the existing operator== for Mesh
+        if (a == b) return true;
+        if (!a || !b) return false;
+        return *a == *b;
+    }
+};
 
   // TODO: I'm hate doing this, but I'm stuck
   for (auto it = itt->second.begin(); it != itt->second.end(); it++) {
@@ -94,7 +109,7 @@ auto Engine::rmv_object(std::vector<std::unique_ptr<Object>>::iterator obj)
   if (it == objects.end())
     return;
 
-  auto itt = it->second.find(*mesh);
+  auto itt = it->second.find(mesh);
   if (itt == it->second.end())
     return;
 
@@ -115,7 +130,7 @@ auto Engine::add_object(std::unique_ptr<Object> obj) -> void {
   Shader *shader = obj->get_component<Shader>("Shader");
   Mesh *mesh = obj->get_component<Mesh>("Mesh");
 
-  objects[*shader][*mesh].push_back(std::move(obj));
+  objects[*shader][mesh].push_back(std::move(obj));
   this->update();
 }
 
@@ -132,7 +147,8 @@ auto Engine::update() -> void {
     this->shader = &shader;
     shader.bind(this);
     this->shader->set("m_projection", projection);
-    for (const auto &[mesh, objs] : meshes) {
+    for (const auto &[pmesh, objs] : meshes) {
+      const Mesh &mesh = *pmesh;
       mesh.bind(this);
       for (const auto &obj : objs) {
         for (const auto &[name, comp] : obj->get_components()) {
@@ -156,15 +172,15 @@ auto Engine::update() -> void {
 }
 
 auto Engine::object(Shader *shader, Mesh *mesh) -> Engine::ID {
-  std::vector<std::unique_ptr<Object>> &vec = objects[*shader][*mesh];
+  std::vector<std::unique_ptr<Object>> &vec = objects[*shader][mesh];
   size_t i = vec.size();
   vec.push_back(std::make_unique<Object>(shader, mesh));
-  return Engine::ID{.shader=shader, .mesh=mesh, .i=i};
+  return Engine::ID{.shader = shader, .mesh = mesh, .i = i};
 }
 
-auto Engine::get(Engine::ID id) -> Object& {
-  std::vector<std::unique_ptr<Object>> &vec = objects[*id.shader][*id.mesh];
-	return *vec[id.i];
+auto Engine::get(Engine::ID id) -> Object & {
+  std::vector<std::unique_ptr<Object>> &vec = objects[*id.shader][id.mesh];
+  return *vec[id.i];
 }
 
 // --- Static Dispatcher Implementations ---
