@@ -16,6 +16,18 @@ auto Object::add_component(Component *component) -> Object & {
 
   return *this;
 }
+
+auto Object::hide() -> void{
+	active = false;
+}
+auto Object::show() -> void {
+	active = true;
+}
+
+auto Object::visible() -> bool{
+	return active;
+}
+
 auto Object::rmv_component(Component *component) -> Object & {
   if (component->get_name() != "Mesh" || component->get_name() != "Shader") {
     components.erase(component->get_name());

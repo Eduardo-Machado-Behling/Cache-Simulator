@@ -16,10 +16,10 @@ struct MeshVertex {
   virtual auto operator()() -> void = 0;
   virtual auto size() -> int = 0;
   virtual auto hash() const -> size_t = 0;
-  virtual auto equal(const MeshVertex* other) const -> bool = 0;
+  virtual auto equal(const MeshVertex *other) const -> bool = 0;
 
   // set data in $data and return the next addr
-  virtual auto setData(void* data) -> void* = 0;
+  virtual auto setData(void *data) -> void * = 0;
 
   struct Hasher {
     auto operator()(const MeshVertex *v) const -> size_t {
@@ -55,6 +55,8 @@ struct Mesh : public Component {
 
   Mesh(std::vector<std::unique_ptr<MeshVertex>> &vertices,
        GLenum mode = GL_TRIANGLES);
+  Mesh(Mesh&& mesh) noexcept;
+  ~Mesh();
 
   auto bind(Engine *engine) const -> void override;
   auto unbind() const -> void override;
@@ -66,12 +68,12 @@ struct Mesh : public Component {
 
   // Hasher for Mesh*
   struct PointerHasher {
-	  auto operator()(const Mesh* mesh) const -> std::size_t;
+    auto operator()(const Mesh *mesh) const -> std::size_t;
   };
 
   // Equality comparator for Mesh*
   struct PointerEqual {
-	  auto operator()(const Mesh* a, const Mesh* b) const -> bool;
+    auto operator()(const Mesh *a, const Mesh *b) const -> bool;
   };
 
 private:

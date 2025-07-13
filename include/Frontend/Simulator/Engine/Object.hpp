@@ -7,7 +7,26 @@
 
 #include <functional>
 #include <memory>
+#include <string_view>
 #include <unordered_map>
+
+template<size_t N>
+struct StringLiteral {
+    constexpr StringLiteral(const char (&str)[N]) {
+        std::copy_n(str, N, value);
+    }
+
+    // Allow comparison with other string literals
+    constexpr bool operator==(const std::string_view other) const {
+        return std::string_view(value) == other;
+    }
+
+    constexpr std::string_view get() const {
+		return std::string_view(value);
+    }
+
+    char value[N];
+};
 
 struct Object {
   Object(Shader *shader, Mesh *mesh);
@@ -15,13 +34,13 @@ struct Object {
 
   auto add_component(Component *Component) -> Object &;
   auto rmv_component(Component *Component) -> Object &;
+  auto hide() -> void;
+  auto show() -> void;
+  auto visible() -> bool;
 
-  template <typename T>
-    requires IsComponent<T>
-  auto set_component(Component *orig, T *newer) -> Object &;
-  template <typename T>
-    requires IsComponent<T>
-  auto set_component(std::string_view name, T *newer) -> Object &;
+template <StringLiteral name, typename T>
+  requires IsComponent<T>
+constexpr auto set_component(T *newer) -> Object &;
 
   template <typename T>
     requires IsComponent<T>
@@ -35,6 +54,7 @@ struct Object {
 private:
   Shader *shader;
   Mesh *mesh;
+  bool active = true;
 
   std::unordered_map<std::string_view, std::unique_ptr<Component>> components;
 };
@@ -64,21 +84,16 @@ auto Object::get_component(std::string_view name) -> T * {
   }
 }
 
-template <typename T>
-  requires IsComponent<T>
-auto Object::set_component(Component *orig, T *newer) -> Object & {
-  return set_component<T>(orig->get_name(), newer);
-}
 
-template <typename T>
+template <StringLiteral name, typename T>
   requires IsComponent<T>
-auto Object::set_component(std::string_view name, T *newer) -> Object & {
-  if (name == "Shader") {
+constexpr auto Object::set_component(T *newer) -> Object & {
+  if constexpr (name == "Shader") {
     shader = newer;
-  } else if (name == "Mesh") {
+  } else if constexpr (name == "Mesh") {
     mesh = newer;
   } else {
-    auto it = components.find(name);
+    auto it = components.find(name.get());
     if (it != components.end()) {
       it->second.reset(newer);
     } else {

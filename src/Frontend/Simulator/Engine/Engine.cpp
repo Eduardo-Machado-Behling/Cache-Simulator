@@ -18,7 +18,8 @@ static auto checkGLErrors(const std::string &operation, GLuint shaderID,
                           std::string_view uniformName) -> bool;
 
 Engine::Engine(int screen_width, int screen_height)
-    : projection(glm::ortho<float>(0.0f, screen_width, 0.0f, screen_height,
+    : camera(screen_width, screen_height),
+      projection(glm::ortho<float>(0.0f, screen_width, 0.0f, screen_height,
                                    Z_NEAR, -Z_FAR)) {
   // --- GLFW/GLAD Initialization ---
   glfwInit();
@@ -73,23 +74,26 @@ auto Engine::rmv_object(Object *obj) -> void {
 
   auto itt = it->second.find(mesh);
   if (itt == it->second.end())
-    return;// Hasher for Mesh*
-struct MeshPointerHasher {
-    auto operator()(const Mesh* mesh) const -> std::size_t {
-        // Dereference the pointer and use the existing std::hash<Mesh> specialization
-        return std::hash<Mesh>{}(*mesh);
+    return; // Hasher for Mesh*
+  struct MeshPointerHasher {
+    auto operator()(const Mesh *mesh) const -> std::size_t {
+      // Dereference the pointer and use the existing std::hash<Mesh>
+      // specialization
+      return std::hash<Mesh>{}(*mesh);
     }
-};
+  };
 
-// Equality comparator for Mesh*
-struct MeshPointerEqual {
-    auto operator()(const Mesh* a, const Mesh* b) const -> bool {
-        // Dereference the pointers and use the existing operator== for Mesh
-        if (a == b) return true;
-        if (!a || !b) return false;
-        return *a == *b;
+  // Equality comparator for Mesh*
+  struct MeshPointerEqual {
+    auto operator()(const Mesh *a, const Mesh *b) const -> bool {
+      // Dereference the pointers and use the existing operator== for Mesh
+      if (a == b)
+        return true;
+      if (!a || !b)
+        return false;
+      return *a == *b;
     }
-};
+  };
 
   // TODO: I'm hate doing this, but I'm stuck
   for (auto it = itt->second.begin(); it != itt->second.end(); it++) {
@@ -100,7 +104,7 @@ struct MeshPointerEqual {
   }
 }
 
-auto Engine::rmv_object(std::vector<std::unique_ptr<Object>>::iterator obj)
+auto Engine::rmv_object(std::list<std::unique_ptr<Object>>::iterator obj)
     -> void {
   Shader *shader = (*obj)->get_component<Shader>("Shader");
   Mesh *mesh = (*obj)->get_component<Mesh>("Mesh");
@@ -122,19 +126,28 @@ auto Engine::rmv_object(std::vector<std::unique_ptr<Object>>::iterator obj)
   }
 }
 
-auto Engine::add_object(Object &obj) -> void {
-  this->add_object(std::make_unique<Object>(std::move(obj)));
+auto Engine::add_object(Object &obj) -> Engine::ID {
+  return this->add_object(std::make_unique<Object>(std::move(obj)));
 }
 
-auto Engine::add_object(std::unique_ptr<Object> obj) -> void {
+auto Engine::add_object(std::unique_ptr<Object> obj) -> Engine::ID {
   Shader *shader = obj->get_component<Shader>("Shader");
   Mesh *mesh = obj->get_component<Mesh>("Mesh");
 
+  size_t i = objects[*shader][mesh].size();
   objects[*shader][mesh].push_back(std::move(obj));
-  this->update();
+  return std::next(objects[*shader][mesh].begin(), (long)i);
 }
 
 auto Engine::get_shader() -> Shader const * { return shader; }
+auto Engine::set_view(int width, int height) -> void {
+  glfwSetWindowSize(window, width, height);
+}
+auto Engine::get_view() -> glm::vec<2, int> {
+  glm::vec<2, int> winSize;
+  glfwGetWindowSize(window, &winSize.x, &winSize.y);
+  return winSize;
+}
 
 auto Engine::halted() -> bool { return glfwWindowShouldClose(window); }
 
@@ -147,10 +160,15 @@ auto Engine::update() -> void {
     this->shader = &shader;
     shader.bind(this);
     this->shader->set("m_projection", projection);
+    this->shader->set_unsafe("m_view", camera.getViewMatrix());
     for (const auto &[pmesh, objs] : meshes) {
       const Mesh &mesh = *pmesh;
       mesh.bind(this);
       for (const auto &obj : objs) {
+        if (!obj->visible()) {
+          continue;
+        }
+
         for (const auto &[name, comp] : obj->get_components()) {
           comp->bind(this);
         }
@@ -172,17 +190,15 @@ auto Engine::update() -> void {
 }
 
 auto Engine::object(Shader *shader, Mesh *mesh) -> Engine::ID {
-  std::vector<std::unique_ptr<Object>> &vec = objects[*shader][mesh];
+  std::list<std::unique_ptr<Object>> &vec = objects[*shader][mesh];
   size_t i = vec.size();
   vec.push_back(std::make_unique<Object>(shader, mesh));
-  return Engine::ID{.shader = shader, .mesh = mesh, .i = i};
+  return std::next(vec.begin(), (long)i);
 }
 
-auto Engine::get(Engine::ID id) -> Object & {
-  std::vector<std::unique_ptr<Object>> &vec = objects[*id.shader][id.mesh];
-  return *vec[id.i];
-}
+auto Engine::get(Engine::ID id) -> Object & { return **id; }
 
+auto Engine::getCamera() -> Camera2D & { return camera; }
 // --- Static Dispatcher Implementations ---
 
 void Engine::KeyCallbackDispatch(GLFWwindow *window, int key, int scancode,
@@ -223,7 +239,14 @@ void Engine::handleKey(int key, int scancode, int action, int mods) {
   // e.g., update a map of currently pressed keys for player movement.
   if (action == GLFW_PRESS) {
     std::cout << "Key Pressed: " << key << std::endl;
+  } else if (action == GLFW_RELEASE) {
+    std::cout << "Key Released: " << key << std::endl;
+  } else {
+    std::cout << "Key Repeat: " << key << std::endl;
   }
+
+  if (onKey)
+    onKey(key, scancode, action, mods);
 }
 
 void Engine::handleFramebufferSize(int width, int height) {
@@ -247,6 +270,60 @@ void Engine::handleCursorPos(double xpos, double ypos) {
   // In a real game, you would use this for camera controls or UI interaction.
   // std::cout << "Mouse Position: (" << xpos << ", " << ypos << ")" <<
   // std::endl;
+}
+
+Engine::Camera2D::Camera2D(float viewportWidth, float viewportHeight)
+    : m_ViewportWidth(viewportWidth), m_ViewportHeight(viewportHeight) {
+  updateMatrices();
+}
+
+void Engine::Camera2D::pan(const glm::vec2 &offset) {
+  m_Position += offset;
+  updateMatrices();
+}
+
+void Engine::Camera2D::zoom(float factor) {
+  // Clamp zoom to avoid getting too large or small
+  m_Zoom = glm::clamp(m_Zoom * factor, 0.1f, 10.0f);
+  updateMatrices();
+}
+
+void Engine::Camera2D::setPosition(const glm::vec2 &position) {
+  m_Position = position;
+  updateMatrices();
+}
+
+void Engine::Camera2D::setZoom(float zoomLevel) {
+  m_Zoom = glm::clamp(zoomLevel, 0.1f, 10.0f);
+  updateMatrices();
+}
+
+void Engine::Camera2D::setViewportSize(float width, float height) {
+  m_ViewportWidth = width;
+  m_ViewportHeight = height;
+  updateMatrices();
+}
+
+void Engine::Camera2D::updateMatrices() {
+  // --- Projection Matrix ---
+  // This defines the "view box" of our camera.
+  // Zooming is achieved by scaling the size of this box.
+  float aspectRatio = m_ViewportWidth / m_ViewportHeight;
+  float orthoWidth = m_Zoom * aspectRatio;
+  float orthoHeight = m_Zoom;
+
+  m_ProjectionMatrix = glm::ortho(-orthoWidth,  // left
+                                  orthoWidth,   // right
+                                  -orthoHeight, // bottom
+                                  orthoHeight,  // top
+                                  Z_NEAR,       // near plane
+                                  -Z_FAR        // far plane
+  );
+
+  // --- View Matrix ---
+  // This matrix moves the "world" to simulate the camera moving.
+  // It's the inverse of the camera's position transformation.
+  m_ViewMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(-m_Position, 0.0f));
 }
 
 static auto checkGLErrors(const std::string &operation, GLuint shaderID,

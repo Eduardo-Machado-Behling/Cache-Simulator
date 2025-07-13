@@ -13,7 +13,7 @@ public:
   ~Temp() {}
 
   auto process([[maybe_unused]] addr_t addr) -> CacheAccess & override {
-    std::uniform_int_distribution<int> dist_block(1, 6);
+    std::uniform_int_distribution<int> dist_block(1, __specs.assoc);
     std::uniform_int_distribution<int> dist_res(
         0, static_cast<int>(AccessResult::UNKOWN));
     this->__access.block = dist_block(engine);

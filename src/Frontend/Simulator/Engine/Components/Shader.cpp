@@ -19,8 +19,8 @@ static auto compile_program(std::initializer_list<uint32_t> shaders)
     -> std::optional<uint32_t>;
 static auto check_compile_errors(unsigned int shader, GLenum type) -> bool;
 
-Shader::Shader(std::string_view vertex_src, std::string_view frag_src)
-    : Component("Shader") {
+Shader::Shader(std::string_view name, std::string_view vertex_src, std::string_view frag_src)
+    : Component("Shader"), name(name) {
   auto vertex = compile_shader(GL_VERTEX_SHADER, vertex_src.data());
   auto frag = compile_shader(GL_FRAGMENT_SHADER, frag_src.data());
 
@@ -71,7 +71,63 @@ auto Shader::set<glm::mat3>(std::string_view name, const glm::mat3 &data) const
   return checkGLErrors("glUniformMatrix3fv", ID, name);
 }
 
+
+template <>
+auto Shader::set_unsafe<glm::mat4>(std::string_view name, const glm::mat4 &data) const
+    -> bool {
+  GLint location = glGetUniformLocation(ID, name.data());
+  if (location == -1) {
+    return false;
+  }
+  glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(data));
+  return checkGLErrors("glUniformMatrix4fv", ID, name);
+}
+
+template <>
+auto Shader::set_unsafe<glm::mat3>(std::string_view name, const glm::mat3 &data) const
+    -> bool {
+  GLint location = glGetUniformLocation(ID, name.data());
+  if (location == -1) {
+    return false;
+  }
+  glUniformMatrix3fv(location, 1, GL_FALSE, glm::value_ptr(data));
+  return checkGLErrors("glUniformMatrix3fv", ID, name);
+}
+
 // --- Vector Types ---
+
+template <>
+auto Shader::set_unsafe<glm::vec4>(std::string_view name, const glm::vec4 &data) const
+    -> bool {
+  GLint location = glGetUniformLocation(ID, name.data());
+  if (location == -1) {
+    return false;
+  }
+  glUniform4fv(location, 1, glm::value_ptr(data));
+  return checkGLErrors("glUniform4fv", ID, name);
+}
+
+template <>
+auto Shader::set_unsafe<glm::vec3>(std::string_view name, const glm::vec3 &data) const
+    -> bool {
+  GLint location = glGetUniformLocation(ID, name.data());
+  if (location == -1) {
+    return false;
+  }
+  glUniform3fv(location, 1, glm::value_ptr(data));
+  return checkGLErrors("glUniform3fv", ID, name);
+}
+
+template <>
+auto Shader::set_unsafe<glm::vec2>(std::string_view name, const glm::vec2 &data) const
+    -> bool {
+  GLint location = glGetUniformLocation(ID, name.data());
+  if (location == -1) {
+    return false;
+  }
+  glUniform2fv(location, 1, glm::value_ptr(data));
+  return checkGLErrors("glUniform2fv", ID, name);
+}
 
 template <>
 auto Shader::set<glm::vec4>(std::string_view name, const glm::vec4 &data) const
@@ -114,6 +170,36 @@ auto Shader::set<glm::vec2>(std::string_view name, const glm::vec2 &data) const
 
 // --- Primitive Types ---
 
+template <>
+auto Shader::set_unsafe<int>(std::string_view name, const int &value) const -> bool {
+  GLint location = glGetUniformLocation(ID, name.data());
+  if (location == -1) {
+    return false;
+  }
+  glUniform1i(location, value);
+  return checkGLErrors("glUniform1i", ID, name);
+}
+
+template <>
+auto Shader::set_unsafe<float>(std::string_view name, const float &value) const
+    -> bool {
+  GLint location = glGetUniformLocation(ID, name.data());
+  if (location == -1) {
+    return false;
+  }
+  glUniform1f(location, value);
+  return checkGLErrors("glUniform1f", ID, name);
+}
+
+template <>
+auto Shader::set_unsafe<bool>(std::string_view name, const bool &value) const -> bool {
+  GLint location = glGetUniformLocation(ID, name.data());
+  if (location == -1) {
+    return false;
+  }
+  glUniform1i(location, static_cast<int>(value)); // Send bools as integers
+  return checkGLErrors("glUniform1i (for bool)", ID, name);
+}
 template <>
 auto Shader::set<int>(std::string_view name, const int &value) const -> bool {
   GLint location = glGetUniformLocation(ID, name.data());

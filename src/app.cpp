@@ -9,7 +9,7 @@
 #include <memory>
 
 static auto getBackend(std::span<std::string> args) -> std::unique_ptr<Backend>;
-static auto getFrontend(std::string &id) -> std::unique_ptr<Frontend>;
+static auto getFrontend(std::string &id, std::unique_ptr<Backend>& backend) -> std::unique_ptr<Frontend>;
 static auto flipWord(addr_t *word) -> void;
 
 App::App(std::unique_ptr<Backend> &&backend,
@@ -44,8 +44,11 @@ auto App::run() -> void {
 auto App::generateApp(std::vector<std::string> &command) -> App {
   constexpr size_t SEP = 5;
 
-  return App(getBackend(std::span(std::next(command.begin()), SEP - 1)),
-             getFrontend(command.at(SEP)), command.at(SEP + 1));
+  std::unique_ptr<Backend> backend =
+      getBackend(std::span(std::next(command.begin()), SEP - 1));
+std::unique_ptr<Frontend> frontend = getFrontend(command.at(SEP), backend);
+
+return App(std::move(backend), std::move(frontend), command.at(SEP + 1));
 }
 
 static auto getBackend(std::span<std::string> args)
@@ -53,19 +56,20 @@ static auto getBackend(std::span<std::string> args)
   return std::make_unique<Temp>(args);
 }
 
-static auto getFrontend(std::string &id) -> std::unique_ptr<Frontend> {
+static auto getFrontend(std::string &id, std::unique_ptr<Backend> &backend)
+    -> std::unique_ptr<Frontend> {
   int i = std::stoi(id);
 
   switch (i) {
   case 2:
-    return std::make_unique<Simulator>();
+    return std::make_unique<Simulator>(backend);
     break;
 
   default:
     break;
   }
 
-  return std::make_unique<Simulator>();
+  return std::make_unique<Simulator>(backend);
 }
 
 static auto flipWord(addr_t *word) -> void {

@@ -1,4 +1,5 @@
 #include "Frontend/Simulator/Engine/Components/Mesh.hpp"
+#include "Frontend/Simulator/Engine/Components/Component.hpp"
 #include "Frontend/Simulator/Engine/Engine.hpp"
 
 #include <cstdint>
@@ -6,7 +7,6 @@
 #include <vector>
 
 #include <unordered_map>
-
 
 Mesh::Mesh(std::vector<std::unique_ptr<MeshVertex>> &vertices, GLenum mode)
     : Component("Mesh"), mode(mode) {
@@ -42,19 +42,17 @@ Mesh::Mesh(std::vector<std::unique_ptr<MeshVertex>> &vertices, GLenum mode)
   glBindVertexArray(data.VAO);
 
   size_t size = data.vertices.size() * (size_t)data.vertices[0]->size();
-  uint8_t* bdata = new uint8_t[size];
+  uint8_t *bdata = new uint8_t[size];
 
-  void* working = bdata;
-  for (auto const & vert : data.vertices) {
-	  working = vert->setData(working);
+  void *working = bdata;
+  for (auto const &vert : data.vertices) {
+    working = vert->setData(working);
   }
 
   // VBO Setup (with correct size)
   glBindBuffer(GL_ARRAY_BUFFER, data.VBO);
-  glBufferData(
-      GL_ARRAY_BUFFER,
-      static_cast<GLsizeiptr>(size),
-      bdata, GL_STATIC_DRAW);
+  glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(size), bdata,
+               GL_STATIC_DRAW);
 
   delete[] bdata;
 
@@ -69,6 +67,43 @@ Mesh::Mesh(std::vector<std::unique_ptr<MeshVertex>> &vertices, GLenum mode)
   // 4. Unbind
   glBindVertexArray(0);
 }
+// Mesh::Mesh(Mesh &&mesh)
+//     : Component("Mesh"), data(std::move(mesh.data)), mode(mesh.mode),
+//       __shader_Id(mesh.__shader_Id) {}
+
+Mesh::~Mesh() {
+  glDeleteVertexArrays(1, &data.VAO);
+
+  GLuint buffers_to_delete[] = {data.VBO, data.EBO};
+  glDeleteBuffers(2,
+                  buffers_to_delete); // '2' is the number of buffers to delete
+}
+
+Mesh::Mesh(Mesh&& other) noexcept
+    // 1. Move the base class part first, if it's movable
+    : Component(std::move(other)),
+    // 2. Copy simple data members
+      mode(other.mode),
+      __shader_Id(other.__shader_Id) 
+{
+    // 3. Move the vector resources. This transfers ownership without copying elements.
+    data.vertices = std::move(other.data.vertices);
+    data.indices = std::move(other.data.indices);
+
+    // 4. Copy the simple data and GPU handles.
+    data.VAO = other.data.VAO;
+    data.VBO = other.data.VBO;
+    data.EBO = other.data.EBO;
+    data.vert_amount = other.data.vert_amount;
+
+    // 5. IMPORTANT: Invalidate the source object's handles.
+    // This prevents the destructor of 'other' from deleting the GPU resources
+    // that this new object now owns.
+    other.data.VAO = 0;
+    other.data.VBO = 0;
+    other.data.EBO = 0;
+    other.data.vert_amount = 0;
+}	
 
 auto Mesh::bind(Engine *engine) const -> void {
   this->__shader_Id = engine->get_shader()->getID();

@@ -24,16 +24,19 @@ template<typename T>
 concept IsInUniformVariant = is_alternative_of_v<T, UniformVariant>;
 
 struct Variable : public Component {
+	Variable();
+
   auto bind(Engine *engine) const -> void override;
   auto unbind() const -> void override;
 
   template <IsInUniformVariant T>
   auto set(std::string_view name, T& value) -> void {
-	  variables[name] = value;
+   variables[name] = value;
   }
+
   template <IsInUniformVariant T>
   auto set(std::string_view name, T value) -> void {
-	  variables[name] = value;
+   variables[name] = value;
   }
 
   auto remove(std::string_view name);

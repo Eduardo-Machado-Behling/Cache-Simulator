@@ -7,7 +7,7 @@
 #include <string_view>
 
 struct Shader : public Component {
-  Shader(std::string_view vertex_src, std::string_view frag_src);
+  Shader(std::string_view name, std::string_view vertex_src, std::string_view frag_src);
 
   auto bind(Engine *engine) const -> void override;
   auto unbind() const -> void override;
@@ -16,6 +16,9 @@ struct Shader : public Component {
   template <typename T>
   auto set(std::string_view name, const T &data) const -> bool;
 
+  template <typename T>
+  auto set_unsafe(std::string_view name, const T &data) const -> bool;
+
   bool operator==(const Shader &other) noexcept;
 
   friend struct std::hash<Shader>;
@@ -23,6 +26,7 @@ struct Shader : public Component {
 
 private:
   uint32_t ID;
+  std::string name;
 };
 
 bool operator==(const Shader &lhs, const Shader &rhs) noexcept;

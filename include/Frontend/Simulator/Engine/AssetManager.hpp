@@ -9,6 +9,8 @@
 #include <filesystem>
 #include <string_view>
 #include <unordered_map>
+#include <utility>
+#include <vector>
 
 class AssetManager {
 public:
@@ -40,10 +42,24 @@ public:
   auto get_mesh(std::string_view name) -> Mesh &;
   auto get_font(std::string_view name) -> Font &;
 
-  auto register_texture(std::string_view name, Texture & texture) -> void;
-  auto register_shader(std::string_view name, Shader & shader) -> void;
-  auto register_mesh(std::string_view name, Mesh & mesh) -> void;
-  auto register_font(std::string_view name, Font & font) -> void;
+  auto register_texture(std::string_view name, Texture &texture) -> void {
+    textures.insert({name, std::move(texture)});
+  }
+  auto register_shader(std::string_view name, Shader &shader) -> void {
+    shaders.insert({name, std::move(shader)});
+  }
+
+  auto register_mesh(std::string_view name,
+                     std::vector<std::unique_ptr<MeshVertex>> &data) -> void {
+    if (meshes.contains(name))
+      meshes.erase(name);
+
+    meshes.insert({name, data});
+  }
+
+  auto register_font(std::string_view name, Font &font) -> void {
+    fonts.insert({name, std::move(font)});
+  }
 
   std::unordered_map<std::string_view, Texture> textures;
   std::unordered_map<std::string_view, Shader> shaders;

@@ -2,6 +2,7 @@
 #define COLOR_HPP
 
 #include "Frontend/Simulator/Engine/Components/Component.hpp"
+#include <cstdint>
 #include <glm/glm.hpp>
 
 struct Color : public Component {
@@ -11,6 +12,8 @@ struct Color : public Component {
 
   auto bind(Engine *engine) const -> void override;
   auto unbind() const -> void override;
+
+  static glm::vec4 hextorgba(uint32_t hex);
 
   glm::vec4 color;
 

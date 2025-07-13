@@ -5,8 +5,9 @@
 #include <cstdint>
 #include <cstring>
 #include <fstream>
-#include <vector>
 #include <glm/glm.hpp>
+#include <iostream>
+#include <vector>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/hash.hpp>
 
@@ -16,22 +17,24 @@ struct FileVertex final : public MeshVertex {
     float data[3];
   } vec;
 
-   auto operator()() -> void override {
+  auto operator()() -> void override {
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, size(),
                           (void *)offsetof(__U, data));
   }
 
-   auto size() -> int override { return sizeof(this->vec); }
-   auto hash() const -> size_t override { return std::hash<glm::vec3>{}(vec.named); }
-   auto equal(const MeshVertex *other) const -> bool override {
-	const FileVertex* vert = reinterpret_cast<decltype(vert)>(other);
-	return vert->vec.named == vec.named;
-   }
-   auto setData(void* data) -> void* override{
-	   std::memcpy(data, &vec, sizeof(vec));
-	   return static_cast<uint8_t*>(data) + sizeof(vec);
-   }
+  auto size() -> int override { return sizeof(this->vec); }
+  auto hash() const -> size_t override {
+    return std::hash<glm::vec3>{}(vec.named);
+  }
+  auto equal(const MeshVertex *other) const -> bool override {
+    const FileVertex *vert = reinterpret_cast<decltype(vert)>(other);
+    return vert->vec.named == vec.named;
+  }
+  auto setData(void *data) -> void * override {
+    std::memcpy(data, &vec, sizeof(vec));
+    return static_cast<uint8_t *>(data) + sizeof(vec);
+  }
 };
 
 auto AssetManager::get_texture(std::string_view name) -> Texture & {
@@ -63,7 +66,7 @@ auto AssetManager::get_shader(std::string_view name) -> Shader & {
   vShaderFile.close();
   fShaderFile.close();
 
-  shaders.try_emplace(name, vertex_src.str(), frag_src.str());
+  shaders.try_emplace(name, name, vertex_src.str(), frag_src.str());
 
   return shaders.at(name);
 }
@@ -81,11 +84,9 @@ auto AssetManager::get_mesh(std::string_view name) -> Mesh & {
   std::ifstream mesh_file(mesh);
   char buff[255];
 
-  size_t i = 0;
-  while (!mesh_file.eof()) {
-    mesh_file.read(buff, sizeof(buff) - 1);
-
-    char *f = strtok(buff, ",\n");
+  while (mesh_file.getline(buff, sizeof(buff) - 1)) {
+    size_t i = 0;
+    char *f = strtok(buff, ",");
 
     FileVertex *vertex = new FileVertex();
     while (f) {
@@ -93,12 +94,6 @@ auto AssetManager::get_mesh(std::string_view name) -> Mesh & {
         continue;
       else if (*f == '+')
         ++f;
-
-      if (i % 3 == 0 && i) {
-        verts.emplace_back(vertex);
-        i = 0;
-        vertex = new FileVertex();
-      }
 
       vertex->vec.data[i++] = static_cast<float>(atof(f));
 
@@ -123,17 +118,17 @@ auto AssetManager::get_font(std::string_view name) -> Font & {
   return fonts.at(name);
 }
 
-auto AssetManager::register_texture(std::string_view name, Texture &texture)
-    -> void {
-  textures.insert({name, std::move(texture)});
-}
-auto AssetManager::register_shader(std::string_view name, Shader &shader)
-    -> void {
-  shaders.insert({name, std::move(shader)});
-}
-auto AssetManager::register_mesh(std::string_view name, Mesh &mesh) -> void {
-  meshes.insert({name, std::move(mesh)});
-}
-auto AssetManager::register_font(std::string_view name, Font &font) -> void {
-  fonts.insert({name, std::move(font)});
-}
+// auto AssetManager::register_texture(std::string_view name, Texture &texture)
+//     -> void {
+//   textures.insert({name, std::move(texture)});
+// }
+// auto AssetManager::register_shader(std::string_view name, Shader &shader)
+//     -> void {
+//   shaders.insert({name, std::move(shader)});
+// }
+// auto AssetManager::register_mesh(std::string_view name, Mesh &mesh) -> void {
+//   meshes.insert({name, std::move(mesh)});
+// }
+// auto AssetManager::register_font(std::string_view name, Font &font) -> void {
+//   fonts.insert({name, std::move(font)});
+// }
