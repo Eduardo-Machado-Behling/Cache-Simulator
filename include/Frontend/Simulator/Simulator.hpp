@@ -38,6 +38,7 @@ struct Text {
 
   glm::vec3 getPos();
   size_t getLength();
+  std::string_view getString();
 
 private:
   std::vector<Engine::ID> objs;
@@ -55,8 +56,9 @@ struct CacheSet {
   glm::vec3 getPos(size_t index, size_t col);
   glm::vec2 getOff();
 
-  void setVal(Engine& engine, AssetManager& assets, size_t line, bool val);
-  void setTag(Engine& engine, AssetManager& assets, size_t line, std::string_view val);
+  void setVal(Engine &engine, AssetManager &assets, size_t line, bool val);
+  void setTag(Engine &engine, AssetManager &assets, size_t line,
+              std::string_view val);
   float getXOff(size_t i);
   size_t getInfoSize();
 
@@ -87,6 +89,12 @@ private:
     size_t i = 0;
   };
 
+  struct ReportLabelEntry {
+    Text *label;
+    Text *value;
+    void *valuePtr;
+  };
+
   auto decomposeAddr(std::queue<addr_t> &addrs, HistCycleInfo &info, Text &top,
                      Backend *backend, CacheAccess access) -> void;
   auto populateAddrs(std::queue<addr_t> &addrs) -> HistCycleInfo;
@@ -110,7 +118,8 @@ private:
   std::array<std::pair<Engine::ID, size_t>, 2> fieldBlock;
   std::array<Engine::ID, 6> pathObjs;
   std::array<Engine::ID, 2> symbolObjs;
-  Text* resLabel;
+  std::vector<ReportLabelEntry> resLabel;
+  const size_t value_digits = 6;
 };
 
 #endif // HELLOWORLD_HPP

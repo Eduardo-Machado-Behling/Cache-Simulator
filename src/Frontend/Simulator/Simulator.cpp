@@ -53,7 +53,9 @@ Text::Text(std::span<Engine::ID> span, std::string_view str, float spacing) {
 void Text::populate(Engine &engine, AssetManager &assets, std::string &string,
                     std::string_view shader) {
   for (size_t i = 0; i < string.length(); i++) {
-    std::string_view letter(this->string.c_str() + i, 1);
+    std::string_view letter =
+        string[i] != '.' ? std::string_view(this->string.c_str() + i, 1)
+                         : "dot";
     if (letter.front() == ' ') {
       Engine::ID id(nullptr);
       objs.push_back(id);
@@ -144,7 +146,7 @@ void Text::setPos(Engine &engine, glm::vec3 pos) {
   position = pos;
 
   foreach ([&](Engine::ID &id) {
-    if (id->get()) {
+    if (id._M_node && id->get()) {
       Object &object = engine.get(id);
 
       Transform *t = object.get_component<Transform>("Transform");
@@ -158,6 +160,7 @@ void Text::setPos(Engine &engine, glm::vec3 pos) {
 glm::vec3 Text::getPos() { return position; }
 
 size_t Text::getLength() { return string.length(); }
+std::string_view Text::getString() { return string; }
 
 Simulator::Simulator(std::unique_ptr<Backend> &backend) : engine(1440, 960) {
   animator.setPlaybackRate(1.0);
@@ -206,7 +209,7 @@ Simulator::Simulator(std::unique_ptr<Backend> &backend) : engine(1440, 960) {
   Object &bottom = engine.get(bt_id);
   bottom
       .add_component(new Transform(glm::vec3(0, 0, 25.f),
-                                   glm::vec3(1040, 250, 1), glm::vec3(0)))
+                                   glm::vec3(1040, 300, 1), glm::vec3(0)))
       .add_component(new Color(0x44475Aff));
 
   Engine::ID hs_id =
@@ -365,6 +368,77 @@ Simulator::Simulator(std::unique_ptr<Backend> &backend) : engine(1440, 960) {
         .add_component(new Variable())
         .add_component(new Color(colors[5]));
     obj.show();
+  }
+
+  // discrete_t accesses = 0;
+  // discrete_t hits = 0;
+  // discrete_t miss = 0;
+  // discrete_t compulsory_miss = 0;
+  // discrete_t conflict_miss = 0;
+  // discrete_t capacity_miss = 0;
+  // percentage_t miss_rate = 0.0f;
+  // percentage_t hit_rate = 0.0f;
+  // percentage_t compulsory_miss_rate = 0.0f;
+  // percentage_t capacity_miss_rate = 0.0f;
+  // percentage_t conflict_miss_rate = 0.0f;
+
+  const char *metrics[][2] = {
+      {"Accesses", "{:>{}}"},
+      {"Hits", "{:>{}}"},
+      {"Miss", "{:>{}}"},
+      {"Compulsory Miss", "{:>{}}"},
+      {"Conflict Miss", "{:>{}}"},
+      {"Capacity Miss", "{:>{}}"},
+
+      {"Miss Rate", "{.2}"},
+      {"Hit Rate", "{.2}"},
+      {"Compulsory MissRate", "{.2}"},
+      {"Capacity MissRate", "{.2}"},
+      {"Conflict MissRate", "{.2}"},
+  };
+
+  Transform *t = bottom.get_component<Transform>("Transform");
+
+  pos = t->get_position();
+  pos.y += t->get_scale().y - 50;
+  const float original_y = pos.y;
+  pos.x += 10;
+  pos.z -= 5;
+  size_t longest = 0;
+  const size_t amount = sizeof(metrics) / sizeof(*metrics);
+  size_t j = 0;
+  for (size_t i = 0; i < amount; i++) {
+    if ((i % 6 == 0 && i > 0) || i == amount - 1) {
+      pos.y = original_y;
+      glm::vec3 value_pos = pos;
+      value_pos.x += 25.f * (float)longest;
+      for (; j < i; j++) {
+        std::string format;
+        if (strstr(metrics[j][0], "Rate") == NULL) {
+          format = std::format("{:>{}}", 0, value_digits);
+        } else {
+          size_t decimal_places = value_digits - 2;
+          format = std::format("{:>{}.{}f}", 0.f, value_digits, decimal_places);
+        }
+        texts.emplace_back(engine, assets, format, 25, "2d");
+        Text &valueLabel = texts.back();
+        valueLabel.setPos(engine, value_pos);
+        this->resLabel[j].value = &valueLabel;
+
+        value_pos.y -= 45;
+      }
+      pos.x += 20.f + value_pos.x + 25.f * (float)value_digits;
+    }
+    std::string format = std::format("{}: ", metrics[i][0], 0);
+    if (format.length() > longest) {
+      longest = format.length();
+    }
+    texts.emplace_back(engine, assets, format, 25, "2d");
+    Text &reportLabel = texts.back();
+    reportLabel.setPos(engine, pos);
+    this->resLabel.emplace_back(&reportLabel, (Text *)NULL, (void *)NULL);
+
+    pos.y -= 45;
   }
 }
 
@@ -1181,6 +1255,21 @@ auto Simulator::drawConnection(Object &box, Object &indexBox,
          vars->set("u_progress", (float)progress);
        },
        1.f},
+      {[this, final](float progress, bool inverse) {
+         for (size_t j = 0; j < resLabel.size(); j++) {
+           std::string format;
+           std::string_view valueStr = resLabel[j].label->getString();
+           if (valueStr.find("Rate") == valueStr.npos) {
+             format = std::format("{:>{}}", 0, value_digits);
+           } else {
+             size_t decimal_places = value_digits - 2;
+             format =
+                 std::format("{:>{}.{}f}", 0.f, value_digits, decimal_places);
+           }
+           this->resLabel[j].value->changeText(engine, assets, format);
+         }
+       },
+       5.f},
       {[this, final](float progress, bool inverse) {
          glm::vec2 st = engine.getCamera().getPos();
 
