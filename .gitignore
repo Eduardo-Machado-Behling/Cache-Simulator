@@ -41,4 +41,5 @@ bin
 .cache
 
 #log
-*.log
+*.log*
+

@@ -108,20 +108,32 @@ void Text::changeText(Engine &engine, AssetManager &assets,
                       std::string_view newText, std::string_view shader) {
   size_t i = 0;
   glm::vec3 pos = position;
+  pos.x -= spacing;
 
   for (; i < newText.length(); i++) {
+    pos.x += spacing;
     std::string letter = newText[i] != '.' ? std::string(1, newText[i]) : "dot";
-    if (i < string.length() && string[i] == newText[i]) {
+    if (newText[i] == ' ' || (i < string.length() && string[i] == newText[i])) {
       continue;
     }
 
-    if (i < objs.size() && objs[i]._M_node) {
-      Engine::ID &id = objs[i];
-      Object obj = std::move(engine.get(id));
+    if (i < objs.size()) {
+      if (objs[i]._M_node) {
+        Engine::ID &id = objs[i];
+        Object obj = std::move(engine.get(id));
 
-      engine.rmv_object(id);
-      obj.set_component<"Mesh">(&assets.get_mesh(letter));
-      objs[i] = engine.add_object(obj);
+        engine.rmv_object(id);
+        obj.set_component<"Mesh">(&assets.get_mesh(letter));
+        objs[i] = engine.add_object(obj);
+      } else {
+        Object &obj = engine.get(engine.object(
+            &assets.get_shader(std::string(shader)), &assets.get_mesh(letter)));
+        obj.set_component<"Transform">(
+               new Transform(pos, glm::vec3(0.01f), glm::vec3(0)))
+            .set_component<"Color">(new Color(0xffffffff));
+        objs[i] = engine.add_object(obj);
+      }
+
     } else if (i >= objs.size()) {
       auto it = objs.emplace_back(engine.object(
           &assets.get_shader(std::string(shader)), &assets.get_mesh(letter)));
@@ -131,8 +143,6 @@ void Text::changeText(Engine &engine, AssetManager &assets,
              new Transform(pos, glm::vec3(0.01f), glm::vec3(0)))
           .set_component<"Color">(new Color(0xffffffff));
     }
-
-    pos.x += spacing;
   }
 
   string = newText;

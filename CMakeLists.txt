@@ -41,7 +41,7 @@ target_compile_options(warnings_as_errors INTERFACE
 )
 
 # Add the external libraries
-add_subdirectory(vendor/glfw SYSTEM)
-add_subdirectory(vendor/glad SYSTEM)
+add_subdirectory(vendor/glfw glfw_build)
+add_subdirectory(vendor/glad glad_build)
 add_subdirectory(vendor/glm SYSTEM)
 add_subdirectory(src)

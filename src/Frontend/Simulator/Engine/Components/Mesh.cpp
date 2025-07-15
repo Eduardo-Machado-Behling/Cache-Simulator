@@ -59,6 +59,8 @@ auto Mesh::changeData(std::vector<std::unique_ptr<MeshVertex>> &vertices,
   glDeleteBuffers(2,
                   buffers_to_delete); // '2' is the number of buffers to delete
 
+  this->data.vertices.clear();
+  this->data.indices.clear();
   init(vertices);
 }
 auto Mesh::bind(Engine *engine) const -> void {
