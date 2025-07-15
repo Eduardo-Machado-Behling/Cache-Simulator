@@ -14,6 +14,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin")
 set(CMAKE_EXPORT_COMPILE_COMMANDS on)
 
 include_directories("${CMAKE_SOURCE_DIR}/include")
+include_directories("${CMAKE_SOURCE_DIR}/vendor/stb")
+
 set(ASSET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/assets")
 add_custom_target(copy_assets ALL
 				COMMAND ${CMAKE_COMMAND} -E copy_directory "${ASSET_DIR}" "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/assets"

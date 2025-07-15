@@ -4,6 +4,7 @@
 #include "Frontend/Simulator/Engine/AssetManager.hpp"
 #include "Frontend/Simulator/Engine/Components/Color.hpp"
 #include "Frontend/Simulator/Engine/Components/Mesh.hpp"
+#include "Frontend/Simulator/Engine/Components/Texture.hpp"
 #include "Frontend/Simulator/Engine/Components/Transform.hpp"
 #include "Frontend/Simulator/Engine/Components/Variable.hpp"
 #include "Frontend/Simulator/Engine/Engine.hpp"
@@ -17,6 +18,7 @@
 #include <experimental/filesystem>
 #include <functional>
 #include <glm/geometric.hpp>
+#include <ios>
 #include <iterator>
 #include <memory>
 #include <queue>
@@ -36,11 +38,12 @@
 
 Text::Text(Engine &engine, AssetManager &assets, std::string_view string,
            float spacing, std::string_view shader)
-    : string(string), spacing(spacing) {
+    : position(glm::vec3(0)), string(string), spacing(spacing) {
   populate(engine, assets, this->string, shader);
 }
 
-Text::Text(std::span<Engine::ID> span, std::string_view str, float spacing) {
+Text::Text(std::span<Engine::ID> span, std::string_view str, float spacing)
+    : position(glm::vec3(0)) {
   objs.reserve(span.size());
   for (auto id : span) {
     objs.emplace_back(id);
@@ -53,15 +56,13 @@ Text::Text(std::span<Engine::ID> span, std::string_view str, float spacing) {
 void Text::populate(Engine &engine, AssetManager &assets, std::string &string,
                     std::string_view shader) {
   for (size_t i = 0; i < string.length(); i++) {
-    std::string_view letter =
-        string[i] != '.' ? std::string_view(this->string.c_str() + i, 1)
-                         : "dot";
+    std::string letter = string[i] != '.' ? std::string(1, string[i]) : "dot";
     if (letter.front() == ' ') {
       Engine::ID id(nullptr);
       objs.push_back(id);
     } else {
-      objs.push_back(
-          engine.object(&assets.get_shader(shader), &assets.get_mesh(letter)));
+      objs.push_back(engine.object(&assets.get_shader(std::string(shader)),
+                                   &assets.get_mesh(letter)));
 
       Object &obj = engine.get(objs.back());
 
@@ -109,8 +110,7 @@ void Text::changeText(Engine &engine, AssetManager &assets,
   glm::vec3 pos = position;
 
   for (; i < newText.length(); i++) {
-    std::string_view letter =
-        newText[i] != '.' ? std::string_view(newText.data() + i, 1) : "dot";
+    std::string letter = newText[i] != '.' ? std::string(1, newText[i]) : "dot";
     if (i < string.length() && string[i] == newText[i]) {
       continue;
     }
@@ -123,8 +123,8 @@ void Text::changeText(Engine &engine, AssetManager &assets,
       obj.set_component<"Mesh">(&assets.get_mesh(letter));
       objs[i] = engine.add_object(obj);
     } else if (i >= objs.size()) {
-      auto it = objs.emplace_back(
-          engine.object(&assets.get_shader(shader), &assets.get_mesh(letter)));
+      auto it = objs.emplace_back(engine.object(
+          &assets.get_shader(std::string(shader)), &assets.get_mesh(letter)));
       Object &obj = **it;
 
       obj.set_component<"Transform">(
@@ -158,6 +158,17 @@ void Text::setPos(Engine &engine, glm::vec3 pos) {
     ;
 }
 
+void Text::show(Engine &engine) {
+  static const auto show = [&engine](Engine::ID &id) { engine.get(id).show(); };
+  foreach (show)
+    ;
+}
+void Text::hide(Engine &engine) {
+  static const auto show = [&engine](Engine::ID &id) { engine.get(id).hide(); };
+  foreach (show)
+    ;
+}
+
 glm::vec3 Text::getPos() { return position; }
 
 size_t Text::getLength() { return string.length(); }
@@ -170,7 +181,7 @@ Simulator::Simulator(std::unique_ptr<Backend> &backend) : engine(1440, 960) {
       engine.object(&assets.get_shader("2d"), &assets.get_mesh("square"));
   Object &sidebar = engine.get(sd_id);
   sidebar
-      .add_component(new Transform(glm::vec3(1040, 0, 50.f),
+      .add_component(new Transform(glm::vec3(1040, 0, 35.f),
                                    glm::vec3(400, 960, 1), glm::vec3(0)))
       .add_component(new Color(0x181818ff));
   sidebar.onResize = [](Object &self, glm::vec<2, int> &window) {
@@ -201,7 +212,7 @@ Simulator::Simulator(std::unique_ptr<Backend> &backend) : engine(1440, 960) {
         return;
       }
 
-      animator.setPlaybackRate(playback > 10.0 ? 10.0 : playback);
+      animator.setPlaybackRate(playback > 20.0 ? 20.0 : playback);
     }
   };
 
@@ -209,7 +220,7 @@ Simulator::Simulator(std::unique_ptr<Backend> &backend) : engine(1440, 960) {
       engine.object(&assets.get_shader("2d"), &assets.get_mesh("square"));
   Object &bottom = engine.get(bt_id);
   bottom
-      .add_component(new Transform(glm::vec3(0, 0, 25.f),
+      .add_component(new Transform(glm::vec3(0, 0, 40.f),
                                    glm::vec3(1040, 300, 1), glm::vec3(0)))
       .add_component(new Color(0x44475Aff));
 
@@ -226,7 +237,8 @@ Simulator::Simulator(std::unique_ptr<Backend> &backend) : engine(1440, 960) {
   history
       .add_component(new Transform(glm::vec3(view.x - 400, 0, 20.f),
                                    glm::vec3(400, 300, 1), glm::vec3(0)))
-      .add_component(new Color(0xff0000ff));
+      .add_component(new Color(0xff0000ff))
+      .hide();
 
   // Engine::ID wl_id =
   //     engine.object(&assets.get_shader("2d"), &assets.get_mesh("square"));
@@ -246,34 +258,40 @@ Simulator::Simulator(std::unique_ptr<Backend> &backend) : engine(1440, 960) {
 
   const auto tagSize = backend->getCache().bits.tag;
 
-  CacheSet *set = &sets.emplace_back(
-      glm::vec3{100, view.y - 350, 55}, glm::vec2{25, 40},
-      backend.get()->getCache(), engine, assets, backend->getCache().nsets);
+  glm::vec3 setPos = glm::vec3{100, view.y - 350, 80};
+  for (size_t i = 0; i < backend->getCache().assoc; i++) {
+    CacheSet *set =
+        &sets.emplace_back(setPos, glm::vec2{25, 40}, backend.get()->getCache(),
+                           engine, assets, backend->getCache().nsets);
 
-  auto pos = set->lookAt(0, 1);
-  texts.emplace_back(engine, assets, "Tag", 25, "2d_camera");
-  Text &tagLabel = texts.back();
-  pos.y += 60;
-  pos.x -= 25.f * 3 / 2;
-  tagLabel.setPos(engine, pos);
+    auto pos = set->lookAt(0, 1);
+    pos.z = setPos.z - 5;
+    texts.emplace_back(engine, assets, "Tag", 25, "2d_camera");
+    Text &tagLabel = texts.back();
+    pos.y += 60;
+    pos.x -= 25.f * 3 / 2;
+    tagLabel.setPos(engine, pos);
 
-  pos = set->lookAt(0, 2);
-  texts.emplace_back(engine, assets, "Information", 25, "2d_camera");
-  Text &infoLabel = texts.back();
-  pos.y += 60;
-  pos.x -= ((float)infoLabel.getLength() * infoLabel.getSpacing()) / 2;
-  infoLabel.setPos(engine, pos);
+    pos = set->lookAt(0, 2);
+    texts.emplace_back(engine, assets, "Information", 25, "2d_camera");
+    Text &infoLabel = texts.back();
+    pos.y += 60;
+    pos.x -= ((float)infoLabel.getLength() * infoLabel.getSpacing()) / 2;
+    infoLabel.setPos(engine, pos);
 
-  std::string str(set->getInfoSize(), 'X');
-  for (size_t i = 0; i < backend->getCache().nsets; i++) {
-    glm::vec3 pos = set->getPos(i, 2);
+    std::string str(set->getInfoSize(), 'X');
+    for (size_t i = 0; i < backend->getCache().nsets; i++) {
+      glm::vec3 pos = set->getPos(i, 2);
 
-    texts.emplace_back(engine, assets, str, 25, "2d_camera");
-    Text &bin = texts.back();
+      texts.emplace_back(engine, assets, str, 25, "2d_camera");
+      Text &bin = texts.back();
 
-    pos.x += 2;
-    pos.z = 55;
-    bin.setPos(engine, pos);
+      pos.x += 2;
+      pos.z = setPos.z - 5;
+      bin.setPos(engine, pos);
+    }
+
+    setPos.x += set->getXOff(3) + 20;
   }
 
   const auto borderColor = glm::vec4(0, 0, 255, 255);
@@ -299,16 +317,16 @@ Simulator::Simulator(std::unique_ptr<Backend> &backend) : engine(1440, 960) {
   float height = sets.back().getOff().y + 20;
 
   Variable *vars = new Variable();
-  box.add_component(
-         new Transform(glm::vec3(0), glm::vec3(width, height, 1), glm::vec3(0)))
-      .add_component(vars)
-      .hide();
-
   vars->set("u_borderColor", borderColor);
   vars->set("u_fillColor", glm::vec4(0));
   vars->set("u_rectPixelSize", glm::vec2(width, height));
   vars->set("u_borderPixelWidth", 2.f);
   vars->set("u_progress", 0.f);
+
+  box.add_component(
+         new Transform(glm::vec3(0), glm::vec3(width, height, 1), glm::vec3(0)))
+      .add_component(vars)
+      .hide();
 
   const auto indexBorderColor = glm::vec4(255, 0, 0, 255);
   size_t indexFieldLabelID = texts.size();
@@ -334,11 +352,6 @@ Simulator::Simulator(std::unique_ptr<Backend> &backend) : engine(1440, 960) {
   height = sets.back().getOff().y + 20;
 
   vars = new Variable();
-  indexBox
-      .add_component(new Transform(glm::vec3(0), glm::vec3(width, height, 1),
-                                   glm::vec3(0)))
-      .add_component(vars)
-      .hide();
 
   vars->set("u_borderColor", indexBorderColor);
   vars->set("u_fillColor", glm::vec4(0));
@@ -346,7 +359,13 @@ Simulator::Simulator(std::unique_ptr<Backend> &backend) : engine(1440, 960) {
   vars->set("u_borderPixelWidth", 2.f);
   vars->set("u_progress", 0.f);
 
-  const auto offsetBorderColor = glm::vec4(255, 162, 0, 255);
+  indexBox
+      .add_component(new Transform(glm::vec3(0), glm::vec3(width, height, 1),
+                                   glm::vec3(0)))
+      .add_component(vars)
+      .hide();
+
+  const auto offsetBorderColor = glm::vec4(204, 85, 0, 255);
   size_t offsetLabelId = texts.size();
   texts.emplace_back(engine, assets, "Offset", 25, "2d");
   Text &offsetLabel = texts.back();
@@ -369,17 +388,18 @@ Simulator::Simulator(std::unique_ptr<Backend> &backend) : engine(1440, 960) {
   height = sets.back().getOff().y + 20;
 
   vars = new Variable();
-  offsetBox
-      .add_component(new Transform(glm::vec3(0), glm::vec3(width, height, 1),
-                                   glm::vec3(0)))
-      .add_component(vars)
-      .hide();
 
   vars->set("u_borderColor", offsetBorderColor);
   vars->set("u_fillColor", glm::vec4(0));
   vars->set("u_rectPixelSize", glm::vec2(width, height));
   vars->set("u_borderPixelWidth", 2.f);
   vars->set("u_progress", 0.f);
+
+  offsetBox
+      .add_component(new Transform(glm::vec3(0), glm::vec3(width, height, 1),
+                                   glm::vec3(0)))
+      .add_component(vars)
+      .hide();
 
   std::array<uint32_t, 6> colors = {0xff0000ff, 0x0000ffff, 0xffff00ff,
                                     0x00ffffff, 0x000000ff, 0x00ff00ff};
@@ -390,21 +410,23 @@ Simulator::Simulator(std::unique_ptr<Backend> &backend) : engine(1440, 960) {
     Object &obj = engine.get(pathObjs[i]);
 
     obj.add_component(
-           new Transform(glm::vec3(0, 0, 30), glm::vec3(1), glm::vec3(0)))
+           new Transform(glm::vec3(0, 0, 65), glm::vec3(1), glm::vec3(0)))
         .add_component(new Variable())
         .add_component(new Color(colors[i]));
     obj.hide();
   }
 
   for (size_t i = 0; i < symbolObjs.size(); i++) {
-    symbolObjs[i] = engine.object(&assets.get_shader("2d_camera"),
+    symbolObjs[i] = engine.object(&assets.get_shader("texture_camera"),
                                   &assets.get_mesh("square"));
     Object &obj = engine.get(symbolObjs[i]);
 
     obj.add_component(
-           new Transform(glm::vec3(0, 0, 25), glm::vec3(20), glm::vec3(0)))
+           new Transform(glm::vec3(0, 0, 60), glm::vec3(50), glm::vec3(0)))
         .add_component(new Variable())
-        .add_component(new Color(colors[5]));
+        .add_component(new Texture(i == 0 ? "comparator.png" : "and.png",
+                                   GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA,
+                                   GL_UNSIGNED_BYTE));
     obj.show();
   }
 
@@ -437,7 +459,7 @@ Simulator::Simulator(std::unique_ptr<Backend> &backend) : engine(1440, 960) {
 
   Transform *t = bottom.get_component<Transform>("Transform");
 
-  pos = t->get_position();
+  glm::vec3 pos = t->get_position();
   pos.y += t->get_scale().y - 50;
   const float original_y = pos.y;
   pos.x += 10;
@@ -484,10 +506,22 @@ Simulator::Simulator(std::unique_ptr<Backend> &backend) : engine(1440, 960) {
 
     pos.y -= 45;
   }
+
+  binId = texts.size();
+  texts.emplace_back(engine, assets, "000", 25, "cutting");
+
+  auto hideText = [this](Engine::ID &id) { engine.get(id).hide(); };
+
+  resultLabel.first = texts.size();
+  texts.emplace_back(engine, assets, "Compulsory", 25, "2d_camera")
+      .foreach (hideText);
+  resultLabel.second = texts.size();
+  texts.emplace_back(engine, assets, "Miss", 25, "2d_camera")
+      .foreach (hideText);
 }
 
 auto Simulator::populateAddrs(std::queue<addr_t> &addrs) -> HistCycleInfo {
-  constexpr size_t in = 20;
+  constexpr size_t in = 30;
   texts.reserve(texts.capacity() + in + 5);
   const auto view = engine.get_view();
 
@@ -501,15 +535,15 @@ auto Simulator::populateAddrs(std::queue<addr_t> &addrs) -> HistCycleInfo {
     std::string hex_string = std::format("0x{:08x}", addr);
     texts.emplace_back(engine, assets, hex_string, 26, "cutting");
     Text &text = texts.back();
-    text.setPos(engine, glm::vec3(view.x - 400 + 10, y, 45.f));
+    text.setPos(engine, glm::vec3(view.x - 400 + 10, y, 20));
     y -= 40;
     text.foreach ([&](Engine::ID &id) {
       Object &obj = engine.get(id);
       Variable *vars = new Variable();
-      obj.add_component(vars);
-
       vars->set("v_border", glm::vec2{view.x - 400, view.y});
       vars->set("orient", false);
+
+      obj.add_component(vars);
     });
   }
 
@@ -524,11 +558,8 @@ auto Simulator::decomposeAddr(std::queue<addr_t> &addrs, HistCycleInfo &info,
                               Text &top, Backend *backend, CacheAccess access)
     -> void {
   addr_t addr = access.orig;
-  static Text *bin = [&]() {
-    texts.emplace_back(engine, assets, "000", 25, "cutting");
-    return &texts.back();
-  }();
 
+  Text *bin = &texts[binId];
   std::string hex_string = std::format("{:032b}", addr);
   auto view = engine.get_view();
   bin->changeText(engine, assets, hex_string, "cutting");
@@ -536,17 +567,19 @@ auto Simulator::decomposeAddr(std::queue<addr_t> &addrs, HistCycleInfo &info,
   bin->foreach ([&](Engine::ID &id) {
     Object &obj = engine.get(id);
     Variable *vars = new Variable();
-    obj.add_component(vars);
 
     vars->set("v_border", glm::vec2{view.x - 400, 0});
     vars->set("orient", true);
+
+    obj.add_component(vars);
   });
 
   const size_t tagSize = backend->getCache().bits.tag;
 
   std::vector<AnimationManager::Animation> textAnim = {
       AnimationManager::Animation(
-          [&](float progress, bool inverse) {
+          [this, &top, &addrs, &info](float progress, bool inverse) {
+            static Text *bin = &texts[binId];
             static glm::vec3 original = top.getPos();
             static glm::vec3 dest = original - glm::vec3(300, 0, 0);
             static glm::vec3 binOriginal = bin->getPos();
@@ -570,7 +603,8 @@ auto Simulator::decomposeAddr(std::queue<addr_t> &addrs, HistCycleInfo &info,
           },
           2.f),
       AnimationManager::Animation(
-          [&](float progress, bool inverse) {
+          [this](float progress, bool inverse) {
+            static Text *bin = &texts[binId];
             static glm::vec3 original = bin->getPos();
             static glm::vec3 dest(150, original.y - 50, original.z);
 
@@ -585,7 +619,8 @@ auto Simulator::decomposeAddr(std::queue<addr_t> &addrs, HistCycleInfo &info,
           },
           2.f),
       AnimationManager::Animation(
-          [&, access, tagSize](float progress, bool inverse) {
+          [this, access, tagSize](float progress, bool inverse) {
+            static Text *bin = &texts[binId];
             static glm::vec3 original = bin->getPos();
             static glm::vec3 dest(150, original.y - 25, original.z);
 
@@ -620,8 +655,6 @@ auto Simulator::decomposeAddr(std::queue<addr_t> &addrs, HistCycleInfo &info,
 
 auto Simulator::populateBottom(std::queue<addr_t> &addrs,
                                HistCycleInfo &populateBottom) -> void {
-  // 1. Declare the vectors as static but empty. They will persist between
-  // calls.
   std::vector<glm::vec3> original(populateBottom.amount);
   std::vector<glm::vec3> dest(populateBottom.amount);
 
@@ -1014,14 +1047,28 @@ auto Simulator::drawConnection(Object &box, Object &indexBox,
   const uint32_t tagMask = (0xffffffff) << (32 - specs.bits.tag);
   const uint32_t indexMask = ~(tagMask) & (0xffffffff << specs.bits.offset);
   const uint32_t index = (access.orig & indexMask) >> specs.bits.offset;
-  const uint32_t tag = access.orig & tagMask;
+  const uint32_t tag = (access.orig & tagMask) >> (32 - specs.bits.tag);
   const uint32_t set = (uint32_t)access.block;
   const float width = 2;
   const float endy = sets[set].lookAt(specs.nsets - 1).y - 100;
-  const float tagEndPad = 50;
-  const float valPad = 50;
-  const float pad = 20;
+  const float tagEndPad = 40;
+  const float valPad = 30;
+  const float pad = 10;
   float endx;
+
+  const auto updatePath =
+      [this](size_t i, std::vector<glm::vec3> &path, std::string pathName,
+             float width, std::vector<std::unique_ptr<MeshVertex>> &data) {
+        data.clear();
+        triangulate(path, width, data);
+
+        Object obj = std::move(engine.get(pathObjs[i]));
+        assets.register_mesh(pathName, data);
+
+        obj.set_component<"Mesh">(&assets.get_mesh(pathName));
+        engine.rmv_object(pathObjs[i]);
+        pathObjs[i] = engine.add_object(obj);
+      };
 
   std::vector<glm::vec3> pathIndex = [this, &indexBox, index, set]() {
     std::vector<glm::vec3> path;
@@ -1050,15 +1097,6 @@ auto Simulator::drawConnection(Object &box, Object &indexBox,
     return path;
   }();
   std::vector<std::unique_ptr<MeshVertex>> data;
-  triangulate(pathIndex, width, data);
-  {
-    assets.register_mesh("pathIndex", data);
-
-    Object obj = std::move(engine.get(pathObjs[0]));
-    engine.rmv_object(&obj);
-    obj.set_component<"Mesh">(&assets.get_mesh("pathIndex"));
-    pathObjs[0] = engine.add_object(obj);
-  }
 
   std::vector<glm::vec3> pathTag = [this, &box, pad, &endx, set, index, endy,
                                     tagEndPad]() {
@@ -1067,11 +1105,11 @@ auto Simulator::drawConnection(Object &box, Object &indexBox,
     Transform *t = box.get_component<Transform>("Transform");
     glm::vec3 vertex(t->get_position());
 
-    vertex.z = -2;
+    vertex.z = 0;
     vertex.x += t->get_scale().x / 2;
     path.push_back(vertex);
 
-    vertex.y -= 50;
+    vertex.y -= 40;
 
     path.push_back(vertex);
 
@@ -1092,17 +1130,6 @@ auto Simulator::drawConnection(Object &box, Object &indexBox,
 
     return path;
   }();
-
-  data.clear();
-  triangulate(pathTag, width, data);
-  {
-    assets.register_mesh("pathTag", data);
-
-    Object obj = std::move(engine.get(pathObjs[1]));
-    engine.rmv_object(&obj);
-    obj.set_component<"Mesh">(&assets.get_mesh("pathTag"));
-    pathObjs[1] = engine.add_object(obj);
-  }
 
   glm::vec3 valEnd;
   std::vector<glm::vec3> pathVal = [this, &valEnd, set, index, valPad, endy]() {
@@ -1128,17 +1155,6 @@ auto Simulator::drawConnection(Object &box, Object &indexBox,
     return path;
   }();
 
-  data.clear();
-  triangulate(pathVal, width, data);
-  {
-    assets.register_mesh("pathVal", data);
-
-    Object obj = std::move(engine.get(pathObjs[2]));
-    engine.rmv_object(&obj);
-    obj.set_component<"Mesh">(&assets.get_mesh("pathVal"));
-    pathObjs[2] = engine.add_object(obj);
-  }
-
   std::vector<glm::vec3> pathTagBlock = [this, &endx, set, index, tagEndPad,
                                          endy]() {
     std::vector<glm::vec3> path;
@@ -1160,37 +1176,19 @@ auto Simulator::drawConnection(Object &box, Object &indexBox,
     return path;
   }();
 
-  data.clear();
-  triangulate(pathTagBlock, width, data);
-  {
-    assets.register_mesh("pathTagBlock", data);
-
-    Object obj = std::move(engine.get(pathObjs[3]));
-    engine.rmv_object(&obj);
-    obj.set_component<"Mesh">(&assets.get_mesh("pathTagBlock"));
-    pathObjs[3] = engine.add_object(obj);
-  }
-
-  for (auto &id : pathObjs) {
-    Object &obj = engine.get(id);
-    obj.show();
-    Variable *vars = obj.get_component<Variable>("Variable");
-    vars->set("u_progress", 0.0f);
-  }
-
   Object &comp = engine.get(symbolObjs[0]);
   Transform *t = comp.get_component<Transform>("Transform");
 
   glm::vec3 scale = t->get_scale();
-  glm::vec3 pos(endx - scale.x * 0.5f, pathTag.back().y - scale.y,
+  glm::vec3 pos(endx - scale.x * 0.5f, pathTag.back().y - scale.y * 0.5f,
                 t->get_position().z);
   t->position(pos);
 
-  std::vector<glm::vec3> pathCompOut = [this, pos, valEnd, &endx, set, t, index,
-                                        tagEndPad, endy]() {
+  std::vector<glm::vec3> pathCompOut = [pos, valEnd, t]() {
     std::vector<glm::vec3> path;
 
-    glm::vec3 vertex(pos - 10.f);
+    glm::vec3 vertex(pos);
+    vertex += t->get_scale() * 0.5f;
 
     vertex.z = 0;
     path.push_back(vertex);
@@ -1198,10 +1196,18 @@ auto Simulator::drawConnection(Object &box, Object &indexBox,
     vertex.x -= 200;
     path.push_back(vertex);
 
-    vertex.y = valEnd.y - 20;
+    float old = vertex.y;
+    vertex.y = valEnd.y - 10;
+    if (old == vertex.y) {
+      vertex.y += 5;
+    }
     path.push_back(vertex);
 
+    old = valEnd.x;
     vertex.x = valEnd.x;
+    if (old == vertex.x) {
+      vertex.x -= 10;
+    }
     path.push_back(vertex);
 
     return path;
@@ -1209,23 +1215,6 @@ auto Simulator::drawConnection(Object &box, Object &indexBox,
 
   const uint32_t COLOR_ON = 0x00ff00ff;
   const uint32_t COLOR_OFF = 0xaaaaaaff;
-  data.clear();
-  triangulate(pathCompOut, width, data);
-  {
-    assets.register_mesh("pathCompOut", data);
-
-    Object obj = std::move(engine.get(pathObjs[4]));
-    engine.rmv_object(&obj);
-    obj.set_component<"Mesh">(&assets.get_mesh("pathCompOut"));
-
-    if (access.res == AccessResult::HIT) {
-      obj.get_component<Color>("Color")->color = Color::hextorgba(COLOR_ON);
-    } else {
-      obj.get_component<Color>("Color")->color = Color::hextorgba(COLOR_OFF);
-    }
-
-    pathObjs[4] = engine.add_object(obj);
-  }
 
   Object &andPort = engine.get(symbolObjs[1]);
   t = andPort.get_component<Transform>("Transform");
@@ -1233,42 +1222,55 @@ auto Simulator::drawConnection(Object &box, Object &indexBox,
 
   t->position(pathVal.back() - glm::vec3(scale.x, scale.y * 0.5f, 0));
 
-  std::vector<glm::vec3> pathAndOut = [this, &scale, &endx, set, t, index,
-                                       tagEndPad, endy]() {
+  std::vector<glm::vec3> pathAndOut = [&scale, t]() {
     std::vector<glm::vec3> path;
 
     glm::vec3 vertex(t->get_position());
+    vertex += t->get_scale() * 0.5f;
 
-    vertex.z = 0;
-    vertex.y += scale.y * 0.5f;
+    vertex.z += 5;
     path.push_back(vertex);
 
-    vertex.x -= 100;
+    vertex.x -= 150;
     path.push_back(vertex);
     return path;
   }();
 
-  data.clear();
-  triangulate(pathAndOut, width, data);
+  std::vector<std::vector<glm::vec3> *> paths = {
+      &pathIndex, &pathTag, &pathVal, &pathTagBlock, &pathCompOut, &pathAndOut,
+  };
+  const char *pathNames[] = {
+      "pathIndex",    "pathTag",     "pathVal",
+      "pathTagBlock", "pathCompOut", "pathAndOut",
+  };
+
+  for (size_t i = 0; i < pathObjs.size(); i++) {
+    updatePath(i, *paths[i], pathNames[i], width, data);
+
+    Object &obj = engine.get(pathObjs[i]);
+    obj.show();
+    Variable *vars = obj.get_component<Variable>("Variable");
+    vars->set("u_progress", 0.0f);
+
+    if (i > 3) {
+      if (access.res == AccessResult::HIT) {
+        obj.get_component<Color>("Color")->color = Color::hextorgba(COLOR_ON);
+      } else {
+        obj.get_component<Color>("Color")->color = Color::hextorgba(COLOR_OFF);
+      }
+    }
+  }
+
   glm::vec2 final = glm::vec2(sets[set].lookAt(index)) -
                     (glm::vec2(engine.get_view()) + glm::vec2(0, 250)) / 2.f;
-  {
-    assets.register_mesh("pathAndOut", data);
 
-    Object obj = std::move(engine.get(pathObjs[5]));
-    engine.rmv_object(&obj);
-    obj.set_component<"Mesh">(&assets.get_mesh("pathAndOut"));
-    if (access.res == AccessResult::HIT) {
-      obj.get_component<Color>("Color")->color = Color::hextorgba(COLOR_ON);
-    } else {
-      obj.get_component<Color>("Color")->color = Color::hextorgba(COLOR_OFF);
-    }
-    pathObjs[5] = engine.add_object(obj);
+  glm::vec3 endPath = pathAndOut.back();
+  for (auto &id : symbolObjs) {
+    engine.get(id).show();
   }
 
   animator.add_track({{
-      {[this, set, first = true, index, final](float progress,
-                                               bool inverse) mutable {
+      {[this, first = true, final](float progress, bool inverse) mutable {
          static glm::vec2 st;
          if (first) {
            engine.getCamera().getPos();
@@ -1323,7 +1325,7 @@ auto Simulator::drawConnection(Object &box, Object &indexBox,
              AnimationManager::lerp(st, final, progress));
        },
        5.f},
-      {[this, endy](float progress, bool inverse) {
+      {[this](float progress, bool inverse) {
          auto &id = pathObjs[4];
          Object &obj = engine.get(id);
 
@@ -1331,7 +1333,7 @@ auto Simulator::drawConnection(Object &box, Object &indexBox,
          vars->set("u_progress", (float)progress);
        },
        1.f},
-      {[this, endy](float progress, bool inverse) {
+      {[this](float progress, bool inverse) {
          auto &id = pathObjs[5];
          Object &obj = engine.get(id);
 
@@ -1339,7 +1341,14 @@ auto Simulator::drawConnection(Object &box, Object &indexBox,
          vars->set("u_progress", (float)progress);
        },
        1.f},
-      {[this, first = true, final](float progress, bool inverse) mutable {
+      {[this, first = true, access, endPath](float progress,
+                                             bool inverse) mutable {
+         Text &upperLabel = texts[std::get<0>(resultLabel)];
+         Text &bottomLabel = texts[std::get<1>(resultLabel)];
+
+         static glm::vec2 cameraPos;
+         static glm::vec2 cameraDest;
+
          if (first) {
            void *data = &backend->report().accesses;
            for (size_t j = 0; j < resLabel.size(); j++) {
@@ -1357,14 +1366,84 @@ auto Simulator::drawConnection(Object &box, Object &indexBox,
              }
              texts[this->resLabel[j].value].changeText(engine, assets, format);
            }
+
+           glm::vec3 pos = endPath;
+           std::string_view upperStr, bottomStr;
+           upperLabel.show(engine);
+           bottomStr = "Miss";
+           switch (access.res) {
+           case AccessResult::HIT:
+             upperLabel.changeText(engine, assets, "Hit");
+             pos.x -=
+                 (float)upperLabel.getLength() * upperLabel.getSpacing() + 5;
+             pos.y -= 10;
+             upperLabel.setPos(engine, pos);
+             bottomLabel.hide(engine);
+             break;
+           case AccessResult::COMPULSORY_MISS:
+             upperStr = "Compulsory";
+             break;
+           case AccessResult::CONFLICT_MISS:
+             upperStr = "Conflict";
+             break;
+           case AccessResult::CAPACITY_MISS:
+             upperStr = "Capacity";
+             break;
+           case AccessResult::UNKOWN:
+             break;
+           }
+
+           if (access.res != AccessResult::HIT) {
+             bottomStr = "Miss";
+             bottomLabel.show(engine);
+             upperLabel.changeText(engine, assets, upperStr, "2d_camera");
+             bottomLabel.changeText(engine, assets, bottomStr, "2d_camera");
+
+             pos.y += 20;
+             pos.x -=
+                 (float)upperLabel.getLength() * upperLabel.getSpacing() + 5;
+             upperLabel.setPos(engine, pos);
+             pos.y -= 40;
+             pos.x +=
+                 ((float)upperLabel.getLength() * upperLabel.getSpacing() -
+                  (float)bottomLabel.getLength() * bottomLabel.getSpacing()) *
+                 0.5f;
+             bottomLabel.setPos(engine, pos);
+           }
+
+           cameraPos = engine.getCamera().getPos();
+           cameraDest = cameraPos - glm::vec2{(float)upperLabel.getLength() *
+                                                      upperLabel.getSpacing() +
+                                                  40,
+                                              0};
+
            first = false;
          }
 
+         upperLabel.foreach ([this, progress](Engine::ID &id) {
+           engine.get(id).get_component<Color>("Color")->color.a = progress;
+         });
+         bottomLabel.foreach ([this, progress](Engine::ID &id) {
+           engine.get(id).get_component<Color>("Color")->color.a = progress;
+         });
+
+         engine.getCamera().setPosition(AnimationManager::lerp(
+             cameraPos, cameraDest, progress * progress));
          if (progress == 1.0) {
            first = true;
          }
        },
-       5.f},
+       2.f},
+      {[this](float progress, bool inverse) {
+         Text &upperLabel = texts[std::get<0>(resultLabel)];
+         Text &bottomLabel = texts[std::get<1>(resultLabel)];
+
+         if (progress == 1.0) {
+           bottomLabel.hide(engine);
+           upperLabel.hide(engine);
+         }
+       },
+       2.f},
       {[this, final](float progress, bool inverse) {
          glm::vec2 st = engine.getCamera().getPos();
 
@@ -1375,7 +1454,7 @@ auto Simulator::drawConnection(Object &box, Object &indexBox,
       {[this, set, first = true, index, tag, specs](float progress,
                                                     bool inverse) mutable {
          if (first) {
-           std::string val = std::format("{:0{}}", tag, specs.bits.tag);
+           std::string val = std::format("{:0{}b}", tag, specs.bits.tag);
            this->sets[set].setVal(engine, assets, index, true);
            this->sets[set].setTag(engine, assets, index, val);
            first = false;
@@ -1401,6 +1480,10 @@ auto Simulator::drawConnection(Object &box, Object &indexBox,
              obj.hide();
            }
 
+           for (auto &id : symbolObjs) {
+             engine.get(id).hide();
+           }
+
            for (auto &idx : fieldBlock) {
              Engine::ID &id = std::get<0>(idx);
              Text &label = texts[std::get<1>(idx)];
@@ -1423,7 +1506,6 @@ CacheSet::CacheSet(glm::vec3 pos, glm::vec2 charsize, CacheSpecs &specs,
                    Engine &engine, AssetManager &assets, size_t blocks) {
   this->pos = pos;
   const float yoff = ceilf(charsize.y * 1.5f);
-  const auto view = engine.get_view();
   off.y = yoff;
   off.x = charsize.x;
   size_t ix = 0;
@@ -1441,13 +1523,7 @@ CacheSet::CacheSet(glm::vec3 pos, glm::vec2 charsize, CacheSpecs &specs,
       Object &object = engine.get(id);
 
       Variable *vars = new Variable();
-
       float width = ceilf(charsize.x * (float)p + charsize.x * 0.5f);
-      object
-          .add_component(new Transform(glm::vec3(x, pos.y, pos.z),
-                                       glm::vec3(width, yoff, 1), glm::vec3(0)))
-          .add_component(vars);
-
       // uniform vec4 u_borderColor = vec4(0.1, 0.1, 0.1, 1.0); // Dark grey
       // uniform vec4 u_fillColor   = vec4(0.0, 0.5, 0.5, 1.0); // Teal
       // uniform vec2 u_rectPixelSize;    // The size of the rect in pixels
@@ -1458,6 +1534,11 @@ CacheSet::CacheSet(glm::vec3 pos, glm::vec2 charsize, CacheSpecs &specs,
       vars->set("u_rectPixelSize", glm::vec2(width, yoff));
       vars->set("u_borderPixelWidth", 1.f);
       vars->set("u_progress", 1.f);
+
+      object
+          .add_component(new Transform(glm::vec3(x, pos.y, pos.z),
+                                       glm::vec3(width, yoff, 1), glm::vec3(0)))
+          .add_component(vars);
 
       x += width;
     }
@@ -1478,7 +1559,7 @@ CacheSet::CacheSet(glm::vec3 pos, glm::vec2 charsize, CacheSpecs &specs,
     Text &bin = valBits.back();
 
     pos.x += 2;
-    pos.z = 29;
+    pos.z = this->pos.z - 5;
     bin.setPos(engine, pos);
 
     pos.x -= (float)maxDigits * 25.f + 10.f;
@@ -1491,7 +1572,7 @@ CacheSet::CacheSet(glm::vec3 pos, glm::vec2 charsize, CacheSpecs &specs,
 
     pos = this->getPos(i, 1);
     pos.x += 2;
-    pos.z = 29;
+    pos.z = this->pos.z - 5;
     tagLabels.emplace_back(engine, assets, tagDefault, 25, "2d_camera");
     Text &tag = tagLabels.back();
     tag.setPos(engine, pos);

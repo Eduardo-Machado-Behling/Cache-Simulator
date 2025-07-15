@@ -9,23 +9,19 @@
 #include <memory>
 #include <string_view>
 #include <unordered_map>
+#include <xkbcommon/xkbcommon.h>
 
-template<size_t N>
-struct StringLiteral {
-    constexpr StringLiteral(const char (&str)[N]) {
-        std::copy_n(str, N, value);
-    }
+template <size_t N> struct StringLiteral {
+  constexpr StringLiteral(const char (&str)[N]) { std::copy_n(str, N, value); }
 
-    // Allow comparison with other string literals
-    constexpr bool operator==(const std::string_view other) const {
-        return std::string_view(value) == other;
-    }
+  // Allow comparison with other string literals
+  constexpr bool operator==(const std::string_view other) const {
+    return std::string_view(value) == other;
+  }
 
-    constexpr std::string_view get() const {
-		return std::string_view(value);
-    }
+  constexpr std::string_view get() const { return std::string_view(value); }
 
-    char value[N];
+  char value[N];
 };
 
 struct Object {
@@ -38,9 +34,9 @@ struct Object {
   auto show() -> void;
   auto visible() -> bool;
 
-template <StringLiteral name, typename T>
-  requires IsComponent<T>
-constexpr auto set_component(T *newer) -> Object &;
+  template <StringLiteral name, typename T>
+    requires IsComponent<T>
+  constexpr auto set_component(T *newer) -> Object &;
 
   template <typename T>
     requires IsComponent<T>
@@ -83,7 +79,6 @@ auto Object::get_component(std::string_view name) -> T * {
     return nullptr;
   }
 }
-
 
 template <StringLiteral name, typename T>
   requires IsComponent<T>

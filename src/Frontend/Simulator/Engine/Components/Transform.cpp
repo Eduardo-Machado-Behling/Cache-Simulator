@@ -68,15 +68,4 @@ auto Transform::apply_vectors() -> void {
   // 2. Combine them in the correct T * R * S order.
   //    This ensures vertices are scaled first, then rotated, then translated.
   this->transform = translationMatrix * rotationMatrix * scaleMatrix;
-
-#ifdef __DEBUG
-  // --- DEBUGGING OUTPUT ---
-  // std::cout << "--- Applying Transform ---" << std::endl;
-  // std::cout << "Transform: " << this << std::endl;
-  // std::cout << "Position:  " << glm::to_string(vec_position) << std::endl;
-  // std::cout << "Scale:     " << glm::to_string(vec_scale) << std::endl;
-  // std::cout << "Final Matrix:\n"
-  //           << glm::to_string(this->transform) << std::endl;
-  // std::cout << "--------------------------" << std::endl;
-#endif
 }

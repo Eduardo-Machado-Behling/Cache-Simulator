@@ -19,7 +19,8 @@ static auto compile_program(std::initializer_list<uint32_t> shaders)
     -> std::optional<uint32_t>;
 static auto check_compile_errors(unsigned int shader, GLenum type) -> bool;
 
-Shader::Shader(std::string_view name, std::string_view vertex_src, std::string_view frag_src)
+Shader::Shader(std::string_view name, std::string_view vertex_src,
+               std::string_view frag_src)
     : Component("Shader"), name(name) {
   auto vertex = compile_shader(GL_VERTEX_SHADER, vertex_src.data());
   auto frag = compile_shader(GL_FRAGMENT_SHADER, frag_src.data());
@@ -35,6 +36,7 @@ Shader::Shader(std::string_view name, std::string_view vertex_src, std::string_v
 
   ID = program.value();
 }
+Shader::~Shader() { glDeleteProgram(this->ID); }
 
 auto Shader::bind(Engine *engine) const -> void { glUseProgram(this->ID); }
 auto Shader::unbind() const -> void { glUseProgram(0); }
@@ -71,10 +73,9 @@ auto Shader::set<glm::mat3>(std::string_view name, const glm::mat3 &data) const
   return checkGLErrors("glUniformMatrix3fv", ID, name);
 }
 
-
 template <>
-auto Shader::set_unsafe<glm::mat4>(std::string_view name, const glm::mat4 &data) const
-    -> bool {
+auto Shader::set_unsafe<glm::mat4>(std::string_view name,
+                                   const glm::mat4 &data) const -> bool {
   GLint location = glGetUniformLocation(ID, name.data());
   if (location == -1) {
     return false;
@@ -84,8 +85,8 @@ auto Shader::set_unsafe<glm::mat4>(std::string_view name, const glm::mat4 &data)
 }
 
 template <>
-auto Shader::set_unsafe<glm::mat3>(std::string_view name, const glm::mat3 &data) const
-    -> bool {
+auto Shader::set_unsafe<glm::mat3>(std::string_view name,
+                                   const glm::mat3 &data) const -> bool {
   GLint location = glGetUniformLocation(ID, name.data());
   if (location == -1) {
     return false;
@@ -97,8 +98,8 @@ auto Shader::set_unsafe<glm::mat3>(std::string_view name, const glm::mat3 &data)
 // --- Vector Types ---
 
 template <>
-auto Shader::set_unsafe<glm::vec4>(std::string_view name, const glm::vec4 &data) const
-    -> bool {
+auto Shader::set_unsafe<glm::vec4>(std::string_view name,
+                                   const glm::vec4 &data) const -> bool {
   GLint location = glGetUniformLocation(ID, name.data());
   if (location == -1) {
     return false;
@@ -108,8 +109,8 @@ auto Shader::set_unsafe<glm::vec4>(std::string_view name, const glm::vec4 &data)
 }
 
 template <>
-auto Shader::set_unsafe<glm::vec3>(std::string_view name, const glm::vec3 &data) const
-    -> bool {
+auto Shader::set_unsafe<glm::vec3>(std::string_view name,
+                                   const glm::vec3 &data) const -> bool {
   GLint location = glGetUniformLocation(ID, name.data());
   if (location == -1) {
     return false;
@@ -119,8 +120,8 @@ auto Shader::set_unsafe<glm::vec3>(std::string_view name, const glm::vec3 &data)
 }
 
 template <>
-auto Shader::set_unsafe<glm::vec2>(std::string_view name, const glm::vec2 &data) const
-    -> bool {
+auto Shader::set_unsafe<glm::vec2>(std::string_view name,
+                                   const glm::vec2 &data) const -> bool {
   GLint location = glGetUniformLocation(ID, name.data());
   if (location == -1) {
     return false;
@@ -171,7 +172,8 @@ auto Shader::set<glm::vec2>(std::string_view name, const glm::vec2 &data) const
 // --- Primitive Types ---
 
 template <>
-auto Shader::set_unsafe<int>(std::string_view name, const int &value) const -> bool {
+auto Shader::set_unsafe<int>(std::string_view name, const int &value) const
+    -> bool {
   GLint location = glGetUniformLocation(ID, name.data());
   if (location == -1) {
     return false;
@@ -192,7 +194,8 @@ auto Shader::set_unsafe<float>(std::string_view name, const float &value) const
 }
 
 template <>
-auto Shader::set_unsafe<bool>(std::string_view name, const bool &value) const -> bool {
+auto Shader::set_unsafe<bool>(std::string_view name, const bool &value) const
+    -> bool {
   GLint location = glGetUniformLocation(ID, name.data());
   if (location == -1) {
     return false;
@@ -277,6 +280,8 @@ static auto compile_program(std::initializer_list<uint32_t> shaders)
   glLinkProgram(program);
 
   if (check_compile_errors(program, UINT32_MAX)) {
+    for (auto shader : shaders)
+      glDeleteShader(shader);
     return program;
   } else {
     return std::nullopt;

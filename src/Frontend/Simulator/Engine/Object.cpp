@@ -11,22 +11,17 @@ auto Object::add_component(Component *component) -> Object & {
   } else if (component->get_name() == "Shader") {
     shader = dynamic_cast<decltype(shader)>(component);
   } else {
-    this->components.emplace(component->get_name(), component);
+    this->components.emplace(component->get_name(),
+                             std::unique_ptr<Component>(component));
   }
 
   return *this;
 }
 
-auto Object::hide() -> void{
-	active = false;
-}
-auto Object::show() -> void {
-	active = true;
-}
+auto Object::hide() -> void { active = false; }
+auto Object::show() -> void { active = true; }
 
-auto Object::visible() -> bool{
-	return active;
-}
+auto Object::visible() -> bool { return active; }
 
 auto Object::rmv_component(Component *component) -> Object & {
   if (component->get_name() != "Mesh" || component->get_name() != "Shader") {

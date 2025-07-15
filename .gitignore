@@ -39,3 +39,6 @@ bin
 .nvim
 .vscode
 .cache
+
+#log
+*.log

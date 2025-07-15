@@ -36,6 +36,9 @@ struct Text {
 
   void setPos(Engine &engine, glm::vec3 pos);
 
+  void show(Engine &engine);
+  void hide(Engine &engine);
+
   glm::vec3 getPos();
   size_t getLength();
   std::string_view getString();
@@ -111,10 +114,15 @@ private:
   bool requestNew = true;
   Backend *backend;
 
+  size_t binId;
+  std::pair<size_t, size_t> resultLabel;
+  std::vector<Text> texts;
+
   using floating_seconds = std::chrono::duration<float>;
   std::chrono::time_point<std::chrono::steady_clock> start;
-  std::vector<Text> texts;
+
   std::vector<CacheSet> sets;
+
   std::array<std::pair<Engine::ID, size_t>, 3> fieldBlock;
   std::array<Engine::ID, 6> pathObjs;
   std::array<Engine::ID, 2> symbolObjs;

@@ -37,7 +37,7 @@ struct FileVertex final : public MeshVertex {
   }
 };
 
-auto AssetManager::get_texture(std::string_view name) -> Texture & {
+auto AssetManager::get_texture(std::string name) -> Texture & {
   auto it = textures.find(name);
   if (it != textures.end()) {
     return it->second;
@@ -45,15 +45,15 @@ auto AssetManager::get_texture(std::string_view name) -> Texture & {
 
   throw AssetManager::NotImplemented("Sorry :)");
 }
-auto AssetManager::get_shader(std::string_view name) -> Shader & {
+auto AssetManager::get_shader(std::string name) -> Shader & {
   auto it = shaders.find(name);
   if (it != shaders.end()) {
     return it->second;
   };
 
   std::filesystem::path root = ROOT / "shaders";
-  std::filesystem::path frag = root / (std::string(name) + ".frag");
-  std::filesystem::path vertex = root / (std::string(name) + ".vert");
+  std::filesystem::path frag = root / (name + ".frag");
+  std::filesystem::path vertex = root / (name + ".vert");
 
   std::ifstream vShaderFile(vertex);
   std::ifstream fShaderFile(frag);
@@ -71,14 +71,14 @@ auto AssetManager::get_shader(std::string_view name) -> Shader & {
   return shaders.at(name);
 }
 
-auto AssetManager::get_mesh(std::string_view name) -> Mesh & {
+auto AssetManager::get_mesh(std::string name) -> Mesh & {
   auto it = meshes.find(name);
   if (it != meshes.end()) {
     return it->second;
   };
 
   std::filesystem::path root = ROOT / "meshes";
-  std::filesystem::path mesh = root / (std::string(name) + ".csv");
+  std::filesystem::path mesh = root / (name + ".csv");
 
   std::vector<std::unique_ptr<MeshVertex>> verts;
   std::ifstream mesh_file(mesh);
@@ -105,12 +105,12 @@ auto AssetManager::get_mesh(std::string_view name) -> Mesh & {
 
   mesh_file.close();
 
-  meshes.insert({name, verts});
+  meshes.emplace(name, std::move(verts));
 
   return meshes.at(name);
 }
 
-auto AssetManager::get_font(std::string_view name) -> Font & {
+auto AssetManager::get_font(std::string name) -> Font & {
   std::filesystem::path root = ROOT / "fonts";
   std::filesystem::path font = root / (std::string(name) + ".ttf");
 

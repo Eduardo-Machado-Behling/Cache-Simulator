@@ -7,7 +7,9 @@
 #include <string_view>
 
 struct Shader : public Component {
-  Shader(std::string_view name, std::string_view vertex_src, std::string_view frag_src);
+  Shader(std::string_view name, std::string_view vertex_src,
+         std::string_view frag_src);
+  ~Shader();
 
   auto bind(Engine *engine) const -> void override;
   auto unbind() const -> void override;

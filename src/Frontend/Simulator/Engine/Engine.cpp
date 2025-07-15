@@ -17,12 +17,14 @@
 static auto checkGLErrors(const std::string &operation, GLuint shaderID,
                           std::string_view uniformName) -> bool;
 
+GLFWManager::GLFWManager() { glfwInit(); }
+GLFWManager::~GLFWManager() { glfwTerminate(); }
+
 Engine::Engine(int screen_width, int screen_height)
     : camera(screen_width, screen_height),
       projection(glm::ortho<float>(0.0f, screen_width, 0.0f, screen_height,
                                    Z_NEAR, -Z_FAR)) {
   // --- GLFW/GLAD Initialization ---
-  glfwInit();
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -62,8 +64,6 @@ Engine::Engine(int screen_width, int screen_height)
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
-Engine::~Engine() { glfwTerminate(); }
-
 auto Engine::rmv_object(Object *obj) -> void {
   Shader *shader = obj->get_component<Shader>("Shader");
   Mesh *mesh = obj->get_component<Mesh>("Mesh");
@@ -74,26 +74,7 @@ auto Engine::rmv_object(Object *obj) -> void {
 
   auto itt = it->second.find(mesh);
   if (itt == it->second.end())
-    return; // Hasher for Mesh*
-  struct MeshPointerHasher {
-    auto operator()(const Mesh *mesh) const -> std::size_t {
-      // Dereference the pointer and use the existing std::hash<Mesh>
-      // specialization
-      return std::hash<Mesh>{}(*mesh);
-    }
-  };
-
-  // Equality comparator for Mesh*
-  struct MeshPointerEqual {
-    auto operator()(const Mesh *a, const Mesh *b) const -> bool {
-      // Dereference the pointers and use the existing operator== for Mesh
-      if (a == b)
-        return true;
-      if (!a || !b)
-        return false;
-      return *a == *b;
-    }
-  };
+    return;
 
   // TODO: I'm hate doing this, but I'm stuck
   for (auto it = itt->second.begin(); it != itt->second.end(); it++) {
@@ -117,13 +98,7 @@ auto Engine::rmv_object(std::list<std::unique_ptr<Object>>::iterator obj)
   if (itt == it->second.end())
     return;
 
-  // TODO: I'm hate doing this, but I'm stuck
-  for (auto it = itt->second.begin(); it != itt->second.end(); it++) {
-    if (it == obj) {
-      itt->second.erase(it);
-      break;
-    }
-  }
+  itt->second.erase(obj);
 }
 
 auto Engine::add_object(Object &obj) -> Engine::ID {

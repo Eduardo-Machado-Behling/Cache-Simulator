@@ -13,6 +13,8 @@
 #include <vector>
 
 struct MeshVertex {
+  virtual ~MeshVertex() = default;
+
   virtual auto operator()() -> void = 0;
   virtual auto size() -> int = 0;
   virtual auto hash() const -> size_t = 0;
@@ -53,10 +55,13 @@ struct Mesh : public Component {
     const char *what() const noexcept { return msg.c_str(); }
   };
 
-  Mesh(std::vector<std::unique_ptr<MeshVertex>> &vertices,
+  Mesh(std::vector<std::unique_ptr<MeshVertex>> vertices,
        GLenum mode = GL_TRIANGLES);
-  Mesh(Mesh&& mesh) noexcept;
+  Mesh(Mesh &&mesh) noexcept;
   ~Mesh();
+
+  auto changeData(std::vector<std::unique_ptr<MeshVertex>> &vertices,
+                  GLenum mode = GL_TRIANGLES) -> void;
 
   auto bind(Engine *engine) const -> void override;
   auto unbind() const -> void override;
@@ -77,6 +82,8 @@ struct Mesh : public Component {
   };
 
 private:
+  auto init(std::vector<std::unique_ptr<MeshVertex>> &vertices) -> void;
+
   struct MeshData {
     uint32_t VAO, VBO, EBO;
     std::vector<std::unique_ptr<MeshVertex>> vertices;

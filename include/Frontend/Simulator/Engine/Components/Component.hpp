@@ -1,7 +1,6 @@
 #ifndef COMPONENT_HPP
 #define COMPONENT_HPP
 
-#include <concepts>
 #include <string>
 #include <string_view>
 #include <type_traits>

@@ -8,8 +8,93 @@
 
 #include <unordered_map>
 
-Mesh::Mesh(std::vector<std::unique_ptr<MeshVertex>> &vertices, GLenum mode)
+Mesh::Mesh(std::vector<std::unique_ptr<MeshVertex>> vertices, GLenum mode)
     : Component("Mesh"), mode(mode) {
+  init(vertices);
+}
+// Mesh::Mesh(Mesh &&mesh)
+//     : Component("Mesh"), data(std::move(mesh.data)), mode(mesh.mode),
+//       __shader_Id(mesh.__shader_Id) {}
+
+Mesh::~Mesh() {
+  glDeleteVertexArrays(1, &data.VAO);
+
+  GLuint buffers_to_delete[] = {data.VBO, data.EBO};
+  glDeleteBuffers(2,
+                  buffers_to_delete); // '2' is the number of buffers to delete
+}
+
+Mesh::Mesh(Mesh &&other) noexcept
+    // 1. Move the base class part first, if it's movable
+    : Component(std::move(other)),
+      // 2. Copy simple data members
+      mode(other.mode), __shader_Id(other.__shader_Id) {
+  // 3. Move the vector resources. This transfers ownership without copying
+  // elements.
+  data.vertices = std::move(other.data.vertices);
+  data.indices = std::move(other.data.indices);
+
+  // 4. Copy the simple data and GPU handles.
+  data.VAO = other.data.VAO;
+  data.VBO = other.data.VBO;
+  data.EBO = other.data.EBO;
+  data.vert_amount = other.data.vert_amount;
+
+  // 5. IMPORTANT: Invalidate the source object's handles.
+  // This prevents the destructor of 'other' from deleting the GPU resources
+  // that this new object now owns.
+  other.data.VAO = 0;
+  other.data.VBO = 0;
+  other.data.EBO = 0;
+  other.data.vert_amount = 0;
+}
+
+auto Mesh::changeData(std::vector<std::unique_ptr<MeshVertex>> &vertices,
+                      GLenum mode) -> void {
+  this->mode = mode;
+
+  glDeleteVertexArrays(1, &data.VAO);
+
+  GLuint buffers_to_delete[] = {data.VBO, data.EBO};
+  glDeleteBuffers(2,
+                  buffers_to_delete); // '2' is the number of buffers to delete
+
+  init(vertices);
+}
+auto Mesh::bind(Engine *engine) const -> void {
+  this->__shader_Id = engine->get_shader()->getID();
+}
+
+auto Mesh::draw() const -> void {
+  glBindVertexArray(data.VAO);
+  glDrawElements(mode, static_cast<GLsizei>(data.indices.size()),
+                 GL_UNSIGNED_SHORT, 0);
+}
+
+auto Mesh::unbind() const -> void { glBindVertexArray(0); }
+
+bool operator==(const Mesh &lhs, const Mesh &rhs) noexcept {
+  return lhs.data.VAO == rhs.data.VAO;
+}
+
+auto Mesh::PointerHasher::operator()(const Mesh *mesh) const -> std::size_t {
+  // Dereference the pointer and use the existing std::hash<Mesh> specialization
+  return std::hash<Mesh>{}(*mesh);
+}
+
+// Equality comparator for Mesh*
+auto Mesh::PointerEqual::operator()(const Mesh *a, const Mesh *b) const
+    -> bool {
+  // Dereference the pointers and use the existing operator== for Mesh
+  if (!a || !b)
+    return false;
+
+  if (a == b)
+    return true;
+  return *a == *b;
+}
+
+auto Mesh::init(std::vector<std::unique_ptr<MeshVertex>> &vertices) -> void {
   if (vertices.empty()) {
     throw Mesh::VertsMissing("Mesh::Mesh: vert_amount == 0");
   }
@@ -66,75 +151,6 @@ Mesh::Mesh(std::vector<std::unique_ptr<MeshVertex>> &vertices, GLenum mode)
 
   // 4. Unbind
   glBindVertexArray(0);
-}
-// Mesh::Mesh(Mesh &&mesh)
-//     : Component("Mesh"), data(std::move(mesh.data)), mode(mesh.mode),
-//       __shader_Id(mesh.__shader_Id) {}
-
-Mesh::~Mesh() {
-  glDeleteVertexArrays(1, &data.VAO);
-
-  GLuint buffers_to_delete[] = {data.VBO, data.EBO};
-  glDeleteBuffers(2,
-                  buffers_to_delete); // '2' is the number of buffers to delete
-}
-
-Mesh::Mesh(Mesh&& other) noexcept
-    // 1. Move the base class part first, if it's movable
-    : Component(std::move(other)),
-    // 2. Copy simple data members
-      mode(other.mode),
-      __shader_Id(other.__shader_Id) 
-{
-    // 3. Move the vector resources. This transfers ownership without copying elements.
-    data.vertices = std::move(other.data.vertices);
-    data.indices = std::move(other.data.indices);
-
-    // 4. Copy the simple data and GPU handles.
-    data.VAO = other.data.VAO;
-    data.VBO = other.data.VBO;
-    data.EBO = other.data.EBO;
-    data.vert_amount = other.data.vert_amount;
-
-    // 5. IMPORTANT: Invalidate the source object's handles.
-    // This prevents the destructor of 'other' from deleting the GPU resources
-    // that this new object now owns.
-    other.data.VAO = 0;
-    other.data.VBO = 0;
-    other.data.EBO = 0;
-    other.data.vert_amount = 0;
-}	
-
-auto Mesh::bind(Engine *engine) const -> void {
-  this->__shader_Id = engine->get_shader()->getID();
-}
-
-auto Mesh::draw() const -> void {
-  glBindVertexArray(data.VAO);
-  glDrawElements(mode, static_cast<GLsizei>(data.indices.size()),
-                 GL_UNSIGNED_SHORT, 0);
-}
-
-auto Mesh::unbind() const -> void { glBindVertexArray(0); }
-
-bool operator==(const Mesh &lhs, const Mesh &rhs) noexcept {
-  return lhs.data.VAO == rhs.data.VAO;
-}
-
-auto Mesh::PointerHasher::operator()(const Mesh *mesh) const -> std::size_t {
-  // Dereference the pointer and use the existing std::hash<Mesh> specialization
-  return std::hash<Mesh>{}(*mesh);
-}
-
-// Equality comparator for Mesh*
-auto Mesh::PointerEqual::operator()(const Mesh *a, const Mesh *b) const
-    -> bool {
-  // Dereference the pointers and use the existing operator== for Mesh
-  if (a == b)
-    return true;
-  if (!a || !b)
-    return false;
-  return *a == *b;
 }
 
 // namespace std {

@@ -14,7 +14,12 @@
 #include <list>
 #include <unordered_map>
 
-struct Engine {
+struct GLFWManager {
+  GLFWManager();
+  ~GLFWManager();
+};
+
+struct Engine : private GLFWManager {
   using ID = std::list<std::unique_ptr<Object>>::iterator;
 
   class Camera2D {
@@ -36,7 +41,7 @@ struct Engine {
     const glm::mat4 &getViewMatrix() const { return m_ViewMatrix; }
     const glm::mat4 &getProjectionMatrix() const { return m_ProjectionMatrix; }
     float getZoom() const { return m_Zoom; }
-	glm::vec2 getPos() const { return m_Position; }
+    glm::vec2 getPos() const { return m_Position; }
 
   private:
     void updateMatrices();
@@ -51,9 +56,8 @@ struct Engine {
   };
 
   Engine(int screen_width, int screen_height);
-  ~Engine();
 
-  auto rmv_object(std::list<std::unique_ptr<Object>>::iterator obj) -> void;
+  auto rmv_object(Engine::ID obj) -> void;
   auto rmv_object(Object *obj) -> void;
 
   auto add_object(std::unique_ptr<Object> obj) -> Engine::ID;
@@ -69,7 +73,7 @@ struct Engine {
 
   auto object(Shader *shader, Mesh *mesh) -> Engine::ID;
   auto get(Engine::ID id) -> Object &;
-  auto getCamera() -> Camera2D&;
+  auto getCamera() -> Camera2D &;
 
   std::function<void(int key, int scancode, int action, int mods)> onKey;
 
