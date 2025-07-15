@@ -90,8 +90,8 @@ private:
   };
 
   struct ReportLabelEntry {
-    Text *label;
-    Text *value;
+    size_t label;
+    size_t value;
     void *valuePtr;
   };
 
@@ -115,7 +115,7 @@ private:
   std::chrono::time_point<std::chrono::steady_clock> start;
   std::vector<Text> texts;
   std::vector<CacheSet> sets;
-  std::array<std::pair<Engine::ID, size_t>, 2> fieldBlock;
+  std::array<std::pair<Engine::ID, size_t>, 3> fieldBlock;
   std::array<Engine::ID, 6> pathObjs;
   std::array<Engine::ID, 2> symbolObjs;
   std::vector<ReportLabelEntry> resLabel;

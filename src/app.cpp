@@ -1,6 +1,7 @@
 #include "app.hpp"
 
-#include "Backend/Temp.hpp"
+#include "Backend/Cache.hpp"
+#include "Frontend/HeadLess.hpp"
 #include "Frontend/Simulator/Simulator.hpp"
 #include "common/TQueue.hpp"
 
@@ -9,7 +10,8 @@
 #include <memory>
 
 static auto getBackend(std::span<std::string> args) -> std::unique_ptr<Backend>;
-static auto getFrontend(std::string &id, std::unique_ptr<Backend>& backend) -> std::unique_ptr<Frontend>;
+static auto getFrontend(std::string &id, std::unique_ptr<Backend> &backend)
+    -> std::unique_ptr<Frontend>;
 static auto flipWord(addr_t *word) -> void;
 
 App::App(std::unique_ptr<Backend> &&backend,
@@ -28,17 +30,21 @@ App::App(std::unique_ptr<Backend> &&backend,
 
   std::ifstream in{l.string(), std::ios::binary};
 
-  while (!in.eof()) {
-    in.read((char *)&addr, sizeof(addr));
+  while (in.read((char *)&addr, sizeof(addr))) {
     flipWord(&addr);
     addrs.push(addr);
   }
 }
 
 auto App::run() -> void {
-  while (!frontend->halted()) {
+  while (!frontend->halted() && !addrs.empty()) {
     frontend->tick(backend.get(), addrs);
   }
+  CacheReport results = backend.get()->report();
+  std::cout << results.accesses << " " << results.hit_rate << " "
+            << results.miss_rate << " " << results.compulsory_miss_rate << " "
+            << results.capacity_miss_rate << " " << results.conflict_miss_rate
+            << "\n";
 }
 
 auto App::generateApp(std::vector<std::string> &command) -> App {
@@ -46,30 +52,32 @@ auto App::generateApp(std::vector<std::string> &command) -> App {
 
   std::unique_ptr<Backend> backend =
       getBackend(std::span(std::next(command.begin()), SEP - 1));
-std::unique_ptr<Frontend> frontend = getFrontend(command.at(SEP), backend);
+  std::unique_ptr<Frontend> frontend = getFrontend(command.at(SEP), backend);
 
-return App(std::move(backend), std::move(frontend), command.at(SEP + 1));
+  return App(std::move(backend), std::move(frontend), command.at(SEP + 1));
 }
 
 static auto getBackend(std::span<std::string> args)
     -> std::unique_ptr<Backend> {
-  return std::make_unique<Temp>(args);
+  return std::make_unique<Cache>(args);
 }
 
 static auto getFrontend(std::string &id, std::unique_ptr<Backend> &backend)
     -> std::unique_ptr<Frontend> {
   int i = std::stoi(id);
-
   switch (i) {
-  case 2:
+  case 0:
     return std::make_unique<Simulator>(backend);
+    break;
+  case 1:
+    return std::make_unique<HeadLess>();
     break;
 
   default:
+    std::cout << "Chose a frontend\n\tHALTING PROGRAM\n";
+    exit(0);
     break;
   }
-
-  return std::make_unique<Simulator>(backend);
 }
 
 static auto flipWord(addr_t *word) -> void {

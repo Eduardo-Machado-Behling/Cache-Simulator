@@ -109,19 +109,20 @@ void Text::changeText(Engine &engine, AssetManager &assets,
   glm::vec3 pos = position;
 
   for (; i < newText.length(); i++) {
-    std::string_view letter(newText.data() + i, 1);
+    std::string_view letter =
+        newText[i] != '.' ? std::string_view(newText.data() + i, 1) : "dot";
     if (i < string.length() && string[i] == newText[i]) {
       continue;
     }
 
-    if (i < objs.size()) {
+    if (i < objs.size() && objs[i]._M_node) {
       Engine::ID &id = objs[i];
       Object obj = std::move(engine.get(id));
 
       engine.rmv_object(id);
       obj.set_component<"Mesh">(&assets.get_mesh(letter));
       objs[i] = engine.add_object(obj);
-    } else {
+    } else if (i >= objs.size()) {
       auto it = objs.emplace_back(
           engine.object(&assets.get_shader(shader), &assets.get_mesh(letter)));
       Object &obj = **it;
@@ -212,20 +213,20 @@ Simulator::Simulator(std::unique_ptr<Backend> &backend) : engine(1440, 960) {
                                    glm::vec3(1040, 300, 1), glm::vec3(0)))
       .add_component(new Color(0x44475Aff));
 
-  Engine::ID hs_id =
-      engine.object(&assets.get_shader("2d"), &assets.get_mesh("square"));
-  Object &history = engine.get(hs_id);
-  history
-      .add_component(new Transform(glm::vec3(view.x - 400, 0, 20.f),
-                                   glm::vec3(400, 250, 1), glm::vec3(0)))
-      .add_component(new Color(0xff0000ff));
-
   bottom.onResize = [](Object &self, glm::vec<2, int> &window) {
     Transform *t = self.get_component<Transform>("Transform");
     auto scale = t->get_scale();
     scale.x = window.x;
     t->scale(scale);
   };
+
+  Engine::ID hs_id =
+      engine.object(&assets.get_shader("2d"), &assets.get_mesh("square"));
+  Object &history = engine.get(hs_id);
+  history
+      .add_component(new Transform(glm::vec3(view.x - 400, 0, 20.f),
+                                   glm::vec3(400, 300, 1), glm::vec3(0)))
+      .add_component(new Color(0xff0000ff));
 
   // Engine::ID wl_id =
   //     engine.object(&assets.get_shader("2d"), &assets.get_mesh("square"));
@@ -327,7 +328,9 @@ Simulator::Simulator(std::unique_ptr<Backend> &backend) : engine(1440, 960) {
   Engine::ID &indexId = std::get<0>(fieldBlock[1]);
   Object &indexBox = engine.get(indexId);
 
-  width = indexFieldLabel.getSpacing() * (float)(32 - tagSize) + 10;
+  width =
+      indexFieldLabel.getSpacing() * (float)(backend->getCache().bits.index) +
+      10;
   height = sets.back().getOff().y + 20;
 
   vars = new Variable();
@@ -338,6 +341,41 @@ Simulator::Simulator(std::unique_ptr<Backend> &backend) : engine(1440, 960) {
       .hide();
 
   vars->set("u_borderColor", indexBorderColor);
+  vars->set("u_fillColor", glm::vec4(0));
+  vars->set("u_rectPixelSize", glm::vec2(width, height));
+  vars->set("u_borderPixelWidth", 2.f);
+  vars->set("u_progress", 0.f);
+
+  const auto offsetBorderColor = glm::vec4(255, 162, 0, 255);
+  size_t offsetLabelId = texts.size();
+  texts.emplace_back(engine, assets, "Offset", 25, "2d");
+  Text &offsetLabel = texts.back();
+  offsetLabel.foreach ([this, &offsetBorderColor](Engine::ID &id) {
+    Object &obj = engine.get(id);
+    Color *color = obj.get_component<Color>("Color");
+    color->color = offsetBorderColor;
+    color->color.a = 0;
+    obj.hide();
+  });
+
+  fieldBlock[2] = std::make_pair(
+      engine.object(&assets.get_shader("border"), &assets.get_mesh("square")),
+      offsetLabelId);
+  Engine::ID &offsetId = std::get<0>(fieldBlock[2]);
+  Object &offsetBox = engine.get(offsetId);
+
+  width =
+      offsetLabel.getSpacing() * (float)(backend->getCache().bits.offset) + 10;
+  height = sets.back().getOff().y + 20;
+
+  vars = new Variable();
+  offsetBox
+      .add_component(new Transform(glm::vec3(0), glm::vec3(width, height, 1),
+                                   glm::vec3(0)))
+      .add_component(vars)
+      .hide();
+
+  vars->set("u_borderColor", offsetBorderColor);
   vars->set("u_fillColor", glm::vec4(0));
   vars->set("u_rectPixelSize", glm::vec2(width, height));
   vars->set("u_borderPixelWidth", 2.f);
@@ -407,8 +445,8 @@ Simulator::Simulator(std::unique_ptr<Backend> &backend) : engine(1440, 960) {
   size_t longest = 0;
   const size_t amount = sizeof(metrics) / sizeof(*metrics);
   size_t j = 0;
-  for (size_t i = 0; i < amount; i++) {
-    if ((i % 6 == 0 && i > 0) || i == amount - 1) {
+  for (size_t i = 0; i <= amount; i++) {
+    if ((i % 6 == 0 && i > 0) || i == amount) {
       pos.y = original_y;
       glm::vec3 value_pos = pos;
       value_pos.x += 25.f * (float)longest;
@@ -420,23 +458,29 @@ Simulator::Simulator(std::unique_ptr<Backend> &backend) : engine(1440, 960) {
           size_t decimal_places = value_digits - 2;
           format = std::format("{:>{}.{}f}", 0.f, value_digits, decimal_places);
         }
+        size_t valueId = texts.size();
         texts.emplace_back(engine, assets, format, 25, "2d");
         Text &valueLabel = texts.back();
         valueLabel.setPos(engine, value_pos);
-        this->resLabel[j].value = &valueLabel;
+        this->resLabel[j].value = valueId;
 
         value_pos.y -= 45;
       }
-      pos.x += 20.f + value_pos.x + 25.f * (float)value_digits;
+      pos.x += 100.f + value_pos.x + 25.f * (float)value_digits;
+
+      if (i == amount)
+        break;
     }
     std::string format = std::format("{}: ", metrics[i][0], 0);
     if (format.length() > longest) {
       longest = format.length();
     }
+
+    size_t labelId = texts.size();
     texts.emplace_back(engine, assets, format, 25, "2d");
     Text &reportLabel = texts.back();
     reportLabel.setPos(engine, pos);
-    this->resLabel.emplace_back(&reportLabel, (Text *)NULL, (void *)NULL);
+    this->resLabel.emplace_back(labelId, 0, (void *)NULL);
 
     pos.y -= 45;
   }
@@ -692,11 +736,9 @@ auto Simulator::showField(Text &bin, discrete_t tagSize, CacheAccess access)
 
   glm::vec3 indexBinOrig = bin.getPos();
   indexBinOrig.x += bin.getSpacing() * (float)tagSize;
-  glm::vec3 indexBinDest = indexBinOrig;
-  indexBinDest.x += delta;
 
   glm::vec3 indexOrig = bin.getPos();
-  indexOrig.x += bin.getSpacing() * (float)tagSize + delta;
+  indexOrig.x += bin.getSpacing() * (float)tagSize;
 
   indexOrig.x -= 6;
   indexOrig.y -= (height - 25) / 2;
@@ -717,23 +759,58 @@ auto Simulator::showField(Text &bin, discrete_t tagSize, CacheAccess access)
 
   indexBox.show();
 
+  Engine::ID &offsetId = std::get<0>(fieldBlock[2]);
+  Text &offsetLabel = texts[std::get<1>(fieldBlock[2])];
+  Object &offsetBox = engine.get(offsetId);
+  t = offsetBox.get_component<Transform>("Transform");
+
+  const float deltaField =
+      (float)tagSize + (float)backend->getCache().bits.index;
+  glm::vec3 offsetBinOrig = bin.getPos();
+  offsetBinOrig.x += bin.getSpacing() * deltaField;
+  glm::vec3 offsetBinDest = offsetBinOrig;
+  offsetBinDest.x += delta;
+
+  glm::vec3 offsetOrig = offsetBinDest;
+
+  offsetOrig.x -= 6;
+  offsetOrig.y -= (height - 25) / 2;
+
+  labelPos = offsetOrig;
+  labelPos.y += height + 15;
+
+  t->position(offsetOrig);
+
+  offsetLabel.setPos(engine, labelPos);
+  offsetLabel.foreach ([this](Engine::ID &id) {
+    Object &obj = engine.get(id);
+    obj.show();
+  });
+
+  offsetBox.show();
+  const size_t indexSize = backend->getCache().bits.index;
+
   AnimationManager::AnimationTrack track(
-      {{[this, &bin, orig, target, indexBinDest, indexBinOrig,
+      {{[this, &bin, orig, target, offsetBinDest, offsetBinOrig, indexSize,
          tagSize](float progress, bool inverse) {
           Text tagText = bin.getSubText(0, tagSize);
-          Text indexText = bin.getSubText(tagSize, 32 - tagSize);
+          Text offsetText =
+              bin.getSubText(tagSize + indexSize, 32 - (tagSize + indexSize));
 
           glm::vec3 final = AnimationManager::lerp(orig, target, progress);
           tagText.setPos(engine, final);
-          final = AnimationManager::lerp(indexBinOrig, indexBinDest, progress);
-          indexText.setPos(engine, final);
+          final =
+              AnimationManager::lerp(offsetBinOrig, offsetBinDest, progress);
+          offsetText.setPos(engine, final);
         },
         0.2f},
-       {[this, &box, &label, &indexBox, &indexLabel, access](float progress,
-                                                             bool inverse) {
+       {[this, &box, &label, &indexBox, &indexLabel, &offsetLabel, &offsetBox,
+         access](float progress, bool inverse) {
           Variable *vars = box.get_component<Variable>("Variable");
           vars->set<float>("u_progress", (float)progress);
           vars = indexBox.get_component<Variable>("Variable");
+          vars->set<float>("u_progress", (float)progress);
+          vars = offsetBox.get_component<Variable>("Variable");
           vars->set<float>("u_progress", (float)progress);
 
           label.foreach ([this, &progress](Engine::ID &id) {
@@ -744,6 +821,13 @@ auto Simulator::showField(Text &bin, discrete_t tagSize, CacheAccess access)
           });
 
           indexLabel.foreach ([this, &progress](Engine::ID &id) {
+            Object &obj = engine.get(id);
+            Color *color = obj.get_component<Color>("Color");
+            color->color = glm::vec4(color->color.r, color->color.g,
+                                     color->color.b, progress);
+          });
+
+          offsetLabel.foreach ([this, &progress](Engine::ID &id) {
             Object &obj = engine.get(id);
             Color *color = obj.get_component<Color>("Color");
             color->color = glm::vec4(color->color.r, color->color.g,
@@ -928,12 +1012,12 @@ auto Simulator::drawConnection(Object &box, Object &indexBox,
                                CacheAccess access) -> void {
   const CacheSpecs &specs = backend->getCache();
   const uint32_t tagMask = (0xffffffff) << (32 - specs.bits.tag);
-  const uint32_t indexMask = ~(tagMask);
-  const uint32_t index = access.orig & indexMask;
+  const uint32_t indexMask = ~(tagMask) & (0xffffffff << specs.bits.offset);
+  const uint32_t index = (access.orig & indexMask) >> specs.bits.offset;
   const uint32_t tag = access.orig & tagMask;
-  const uint32_t set = (uint32_t)access.block - 1;
+  const uint32_t set = (uint32_t)access.block;
   const float width = 2;
-  const float endy = sets[set].lookAt(specs.nsets).y - 100;
+  const float endy = sets[set].lookAt(specs.nsets - 1).y - 100;
   const float tagEndPad = 50;
   const float valPad = 50;
   const float pad = 20;
@@ -1255,18 +1339,29 @@ auto Simulator::drawConnection(Object &box, Object &indexBox,
          vars->set("u_progress", (float)progress);
        },
        1.f},
-      {[this, final](float progress, bool inverse) {
-         for (size_t j = 0; j < resLabel.size(); j++) {
-           std::string format;
-           std::string_view valueStr = resLabel[j].label->getString();
-           if (valueStr.find("Rate") == valueStr.npos) {
-             format = std::format("{:>{}}", 0, value_digits);
-           } else {
-             size_t decimal_places = value_digits - 2;
-             format =
-                 std::format("{:>{}.{}f}", 0.f, value_digits, decimal_places);
+      {[this, first = true, final](float progress, bool inverse) mutable {
+         if (first) {
+           void *data = &backend->report().accesses;
+           for (size_t j = 0; j < resLabel.size(); j++) {
+             std::string format;
+             std::string_view valueStr = texts[resLabel[j].label].getString();
+             if (valueStr.find("Rate") == valueStr.npos) {
+               format =
+                   std::format("{:>{}}", *(discrete_t *)(data), value_digits);
+               data = (discrete_t *)data + 1;
+             } else {
+               size_t decimal_places = value_digits - 2;
+               format = std::format("{:>{}.{}f}", *(percentage_t *)data,
+                                    value_digits, decimal_places);
+               data = (percentage_t *)data + 1;
+             }
+             texts[this->resLabel[j].value].changeText(engine, assets, format);
            }
-           this->resLabel[j].value->changeText(engine, assets, format);
+           first = false;
+         }
+
+         if (progress == 1.0) {
+           first = true;
          }
        },
        5.f},
@@ -1431,7 +1526,7 @@ glm::vec3 CacheSet::lookAt(size_t index, size_t col) {
 }
 
 glm::vec3 CacheSet::lookAt(size_t index) {
-  float y = valBits[index - 1].getPos().y;
+  float y = valBits[index].getPos().y;
 
   return glm::vec3(xoffs.front() + (xoffs.back() - xoffs.front()) / 2.f, y, 0);
 }
