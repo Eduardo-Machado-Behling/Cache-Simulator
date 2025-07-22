@@ -23,15 +23,26 @@ App::App(std::unique_ptr<Backend> &&backend,
 
   std::filesystem::path root = std::filesystem::current_path();
   std::filesystem::path l = root / path;
+  std::filesystem::path txt = root / path;
+
   if (!std::filesystem::exists(l)) {
     root = l.parent_path() / "assets" / "inputs";
     l = root / path;
+    txt = root / (path.substr(0, path.length() - 3) + "txt");
   }
 
+  
   std::ifstream in{l.string(), std::ios::binary};
+  std::ifstream inTxt{txt.string()};
 
   while (in.read((char *)&addr, sizeof(addr))) {
-    flipWord(&addr);
+    std::string gabas;
+    std::getline(inTxt, gabas);
+
+    addr_t gab = (addr_t) std::stoull(gabas);
+    if(addr != gab){
+      flipWord(&addr);
+    }
     addrs.push(addr);
   }
 }

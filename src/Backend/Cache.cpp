@@ -68,7 +68,7 @@ auto Cache::process([[maybe_unused]] addr_t addr) -> CacheAccess & {
     cache[index][__access.block].tag = tag;
   }
   __access.orig = addr;
-  std::cout << __report.accesses << " " << __access.orig << " " << __access.block << " " << index << " " << "\n";
+  // std::cout << __report.accesses << " " << __access.orig << " " << __access.block << " " << index << " " << "\n";
   return this->__access;
 }
 

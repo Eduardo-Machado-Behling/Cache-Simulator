@@ -184,7 +184,7 @@ glm::vec3 Text::getPos() { return position; }
 size_t Text::getLength() { return string.length(); }
 std::string_view Text::getString() { return string; }
 
-Simulator::Simulator(std::unique_ptr<Backend> &backend) : engine(1440, 960) {
+Simulator::Simulator(std::unique_ptr<Backend> &backend) : engine(1920, 1080 - 80) {
   animator.setPlaybackRate(1.0);
   auto view = engine.get_view();
   Engine::ID sd_id =
@@ -541,7 +541,6 @@ auto Simulator::populateAddrs(std::queue<addr_t> &addrs) -> HistCycleInfo {
     addr_t addr = addrs.front();
     addrs.pop();
 
-    std::cout << i << ": " << addr << '\n';
     std::string hex_string = std::format("0x{:08x}", addr);
     texts.emplace_back(engine, assets, hex_string, 26, "cutting");
     Text &text = texts.back();
@@ -668,7 +667,6 @@ auto Simulator::populateBottom(std::queue<addr_t> &addrs,
   std::vector<glm::vec3> original(populateBottom.amount);
   std::vector<glm::vec3> dest(populateBottom.amount);
 
-  std::cout << "Remaining: " << addrs.size() << '\n';
   if (addrs.empty()) {
     Text &text = texts[populateBottom.begin + populateBottom.i];
     text.foreach ([this](Engine::ID &id) { engine.get(id).hide(); });
@@ -925,47 +923,6 @@ struct PathVertex final : public MeshVertex {
     return static_cast<uint8_t *>(data) + sizeof(vec);
   }
 };
-
-// static auto triangulate(std::vector<glm::vec3> &path, glm::vec2 size,
-//                         std::vector<std::unique_ptr<MeshVertex>> &meshData)
-//     -> void {
-//   std::array<glm::vec3, 4> derived;
-//   glm::vec2 halfSize = size * 0.5f;
-//   float currDistance = 0;
-//   float totalDistance = 0;
-//
-//   std::cout << "Vertices:\n";
-//   for (size_t i = 1; i < path.size(); i++) {
-//     glm::vec3 prev = path[i - 1];
-//     glm::vec3 curr = path[i];
-//
-//     totalDistance += glm::distance(curr, prev);
-//     std::cout << '\t' << prev << " -> " << curr << '\n';
-//   }
-//
-//   std::cout << "\nShape:\n";
-//
-//   for (size_t i = 1; i < path.size(); i++) {
-//     glm::vec3 prev = path[i - 1];
-//     glm::vec3 curr = path[i];
-//
-//     glm::vec3 direction = glm::normalize(curr - prev);
-//     glm::vec3 normal = glm::vec3(-direction.y, direction.x, 0.0f);
-//     currDistance += glm::distance(curr, prev);
-//
-//     derived[0] = prev - normal * halfSize.x;
-//     derived[1] = prev + normal * halfSize.x;
-//     derived[2] = curr - normal * halfSize.x;
-//     derived[3] = curr + normal * halfSize.x;
-//
-//     const std::array<size_t, 6> indices = {0, 1, 2, 1, 2, 3};
-//     for (size_t index : indices) {
-//       std::cout << '\t' << derived[index] << '\n';
-//       meshData.emplace_back(
-//           new PathVertex(derived[index], currDistance, totalDistance));
-//     }
-//   }
-// }
 
 static auto triangulate(const std::vector<glm::vec3> &path, float lineWidth,
                         std::vector<std::unique_ptr<MeshVertex>> &meshData)

@@ -205,19 +205,9 @@ void Engine::CursorPosCallbackDispatch(GLFWwindow *window, double xpos,
 // --- Member Function Handler Implementations (Your Actual Logic) ---
 
 void Engine::handleKey(int key, int scancode, int action, int mods) {
-  // Example: Close the window when the 'Escape' key is pressed.
+  // Close the window when the 'Escape' key is pressed.
   if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
     glfwSetWindowShouldClose(window, true);
-  }
-
-  // You can add logic here to handle other key presses
-  // e.g., update a map of currently pressed keys for player movement.
-  if (action == GLFW_PRESS) {
-    std::cout << "Key Pressed: " << key << std::endl;
-  } else if (action == GLFW_RELEASE) {
-    std::cout << "Key Released: " << key << std::endl;
-  } else {
-    std::cout << "Key Repeat: " << key << std::endl;
   }
 
   if (onKey)
@@ -241,10 +231,7 @@ void Engine::handleFramebufferSize(int width, int height) {
 }
 
 void Engine::handleCursorPos(double xpos, double ypos) {
-  // Example: Print mouse coordinates.
-  // In a real game, you would use this for camera controls or UI interaction.
-  // std::cout << "Mouse Position: (" << xpos << ", " << ypos << ")" <<
-  // std::endl;
+
 }
 
 Engine::Camera2D::Camera2D(float viewportWidth, float viewportHeight)

@@ -4,7 +4,6 @@
 #include "Frontend/Simulator/Engine/Components/Mesh.hpp"
 #include "Frontend/Simulator/Engine/Components/Shader.hpp"
 #include "Frontend/Simulator/Engine/Components/Texture.hpp"
-#include "Frontend/Simulator/Engine/Font.hpp"
 
 #include <filesystem>
 #include <iostream>
@@ -42,7 +41,6 @@ public:
   auto get_texture(std::string name) -> Texture &;
   auto get_shader(std::string name) -> Shader &;
   auto get_mesh(std::string name) -> Mesh &;
-  auto get_font(std::string name) -> Font &;
 
   auto register_texture(std::string name, Texture &texture) -> void {
     textures.insert({name, std::move(texture)});
@@ -60,14 +58,9 @@ public:
     }
   }
 
-  auto register_font(std::string name, Font &font) -> void {
-    fonts.insert({name, std::move(font)});
-  }
-
   std::unordered_map<std::string, Texture> textures;
   std::unordered_map<std::string, Shader> shaders;
   std::unordered_map<std::string, Mesh> meshes;
-  std::unordered_map<std::string, Font> fonts;
 };
 
 #endif // ASSETMANAGER_HPP
