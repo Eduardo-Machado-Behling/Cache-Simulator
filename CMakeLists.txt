@@ -40,9 +40,14 @@ target_compile_options(warnings_as_errors INTERFACE
 				$<$<CXX_COMPILER_ID:MSVC>:/WX>
 )
 
+option(BUILD_GUI ON)
+
 # Add the external libraries
-set(GLFW_BUILD_WAYLAND OFF)
-add_subdirectory(vendor/glfw glfw_build)
-add_subdirectory(vendor/glad glad_build)
-add_subdirectory(vendor/glm SYSTEM)
+if(BUILD_GUI)
+	set(GLFW_BUILD_WAYLAND OFF)
+	add_subdirectory(vendor/glfw glfw_build)
+	add_subdirectory(vendor/glad glad_build)
+	add_subdirectory(vendor/glm SYSTEM)
+endif(BUILD_GUI)
+
 add_subdirectory(src)

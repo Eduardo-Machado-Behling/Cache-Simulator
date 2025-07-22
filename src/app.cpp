@@ -2,7 +2,9 @@
 
 #include "Backend/Cache.hpp"
 #include "Frontend/HeadLess.hpp"
+#ifdef BUILD_GUI
 #include "Frontend/Simulator/Simulator.hpp"
+#endif
 #include "common/TQueue.hpp"
 
 #include <filesystem>
@@ -77,9 +79,11 @@ static auto getFrontend(std::string &id, std::unique_ptr<Backend> &backend)
     -> std::unique_ptr<Frontend> {
   int i = std::stoi(id);
   switch (i) {
+#ifdef BUILD_GUI
   case 0:
     return std::make_unique<Simulator>(backend);
     break;
+#endif
   case 1:
     return std::make_unique<HeadLess>();
     break;
